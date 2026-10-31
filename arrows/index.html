@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#e6e6e6">
 <title>Arrows</title>
 <style>
-html,body{margin:0;width:100%;height:100%;background:#e6e6e6;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;background:#d9d9d9;overflow:hidden;overscroll-behavior:none;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
 #c{position:fixed;left:0;top:0;width:100%;height:100%;display:block;touch-action:none;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 </style></head><body>
 <canvas id="c"></canvas>
@@ -15,12 +15,12 @@ html,body{margin:0;width:100%;height:100%;background:#e6e6e6;overflow:hidden;ove
 var SP=50, N=28, DUR=200, COLOR='rgba(0,0,0,0.6)';
 var cv=document.getElementById('c'), ctx=cv.getContext('2d');
 var W=0,H=0,dpr=1,cols=0,rows=0,ox=0,oy=0;
-var cx=[],cy=[],ang=[];
+var cx=[],cy=[],ang=[],dist=[];
 var pressed=false,pid=null,px=0,py=0;
 var t=0,from=0,to=0,t0=0,raf=0,dirty=true;
 
 // Shapes: N points each, same ordering, so they interpolate. Arrow points along +x, radius <= 10 (fits a 20px box around cell center).
-var verts=[[9,0],[1,6.5],[1,2],[-9,2],[-9,-2],[1,-2],[1,-6.5]];
+var verts=[[7.5,0],[1,6.5],[1,2],[-7.5,2],[-7.5,-2],[1,-2],[1,-6.5]];
 var arrow=[];
 (function(){
   var per=N/verts.length; // 4 pts per edge
@@ -39,15 +39,15 @@ function layout(){
   cols=Math.max(1,Math.floor(W/SP));rows=Math.max(1,Math.floor(H/SP));
   ox=(W-cols*SP)/2+SP/2;oy=(H-rows*SP)/2+SP/2;
   var old=ang.slice();
-  cx=[];cy=[];ang=[];
+  cx=[];cy=[];ang=[];dist=[];
   for(var r=0;r<rows;r++)for(var c=0;c<cols;c++){
-    cx.push(ox+c*SP);cy.push(oy+r*SP);ang.push(0);
+    cx.push(ox+c*SP);cy.push(oy+r*SP);ang.push(0);dist.push(0);
   }
   if(pressed)aim();
   dirty=true;schedule();
 }
 function aim(){
-  for(var i=0;i<cx.length;i++)ang[i]=Math.atan2(py-cy[i],px-cx[i]);
+  var D=Math.hypot(W,H)||1;for(var i=0;i<cx.length;i++){var dx=px-cx[i],dy=py-cy[i];ang[i]=Math.atan2(dy,dx);dist[i]=Math.min(1,Math.hypot(dx,dy)/D);}
 }
 function ease(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;}
 function draw(){
@@ -57,17 +57,17 @@ function draw(){
   // morphed local shape
   var sx=new Array(N),sy=new Array(N),i,k;
   for(k=0;k<N;k++){sx[k]=dot[k][0]+(arrow[k][0]-dot[k][0])*e;sy[k]=dot[k][1]+(arrow[k][1]-dot[k][1])*e;}
-  ctx.fillStyle=COLOR;
-  ctx.beginPath();
   for(i=0;i<cx.length;i++){
+    var f=dist[i]||0,L=1+2*f*e,a=0.6+((0.8-0.55*f)-0.6)*e;
     var c=Math.cos(ang[i]),s=Math.sin(ang[i]),X=cx[i],Y=cy[i];
+    ctx.fillStyle='rgba(0,0,0,'+a.toFixed(3)+')';
+    ctx.beginPath();
     for(k=0;k<N;k++){
-      var x=X+sx[k]*c-sy[k]*s,y=Y+sx[k]*s+sy[k]*c;
+      var lx=sx[k]*L,x=X+lx*c-sy[k]*s,y=Y+lx*s+sy[k]*c;
       if(k===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
     }
-    ctx.closePath();
+    ctx.closePath();ctx.fill();
   }
-  ctx.fill();
 }
 function frame(now){
   raf=0;
