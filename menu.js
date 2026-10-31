@@ -3,7 +3,8 @@
   var EXPERIMENTS = [
     { name: 'Stickers', path: 'stickers/' },
     { name: 'Arrows', path: 'arrows/' },
-    { name: 'Artifacts', path: 'artifacts/' }
+    { name: 'Artifacts', path: 'artifacts/' },
+    { name: 'Garden', path: 'garden/' }
   ];
 
   var cs = document.currentScript;
