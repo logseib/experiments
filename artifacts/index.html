@@ -7,109 +7,80 @@
 <title>Artifacts</title>
 <style>
 html,body{margin:0;height:100%;background:#0e0e0e;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
-#board{position:fixed;inset:0;touch-action:none}
-.art{position:absolute;left:0;top:0;width:min(60vw,300px);touch-action:none;cursor:grab;will-change:transform;visibility:hidden}
-.art.ready{visibility:visible}
-.art.held{cursor:grabbing}
-.bob{animation:bob 5s ease-in-out infinite}
-@keyframes bob{0%,100%{transform:translateY(-6px) rotate(-.6deg)}50%{transform:translateY(6px) rotate(.6deg)}}
-.face{transition:transform .45s cubic-bezier(.3,1.35,.5,1)}
-.art.held .face{transform:translateY(-10px) scale(1.03)}
-.face img{display:block;width:100%;height:auto;pointer-events:none;-webkit-user-drag:none;
-  filter:brightness(var(--b,1)) drop-shadow(0 6px 8px rgba(0,0,0,.6)) drop-shadow(0 1px 2px rgba(0,0,0,.7));transition:filter .45s ease}
-.art.held .face img{filter:brightness(var(--b,1)) drop-shadow(0 22px 22px rgba(0,0,0,.65)) drop-shadow(0 6px 6px rgba(0,0,0,.45))}
+#board{position:fixed;inset:0;touch-action:none;cursor:grab}
+#board.drag{cursor:grabbing}
+#stage{position:absolute;left:50%;top:50%;width:min(70vw,340px);aspect-ratio:637/725;transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .4s ease}
+#stage.ready{opacity:1}
+#bob{position:absolute;inset:0;animation:bob 5s ease-in-out infinite;filter:drop-shadow(0 14px 14px rgba(0,0,0,.6)) drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+@keyframes bob{0%,100%{transform:translateY(-5px)}50%{transform:translateY(5px)}}
+#bob img{position:absolute;inset:0;width:100%;height:100%;display:block;visibility:hidden;pointer-events:none;-webkit-user-drag:none}
+#bob img.on{visibility:visible}
 </style></head><body>
-<div id="board"><div class="art" id="art"><div class="bob"><div class="face"><img id="img" src="fish.png" alt="Rock shard with a fish symbol scratched into it" draggable="false"></div></div></div></div>
+<div id="board"><div id="stage"><div id="bob"></div></div></div>
 <script>
 (function(){
-var board=document.getElementById('board'),el=document.getElementById('art'),img=document.getElementById('img');
-var MINS=0.4,MAXS=3;
-function clampS(v){return Math.max(MINS,Math.min(MAXS,v))}
-el._r=(Math.random()*6-3);el._s=1;el._x=0;el._y=0;
-// brightness from vertical centre: top ~1.5, middle 1.0, bottom ~0.35 (smooth quadratic through those points)
-function brightFor(cy){var t=Math.max(0,Math.min(1,cy/innerHeight)),u=(0.5-t)*2;return 1+0.575*u-0.075*u*u}
-function applyB(){var cy=el._y+el.offsetHeight/2;el._b=brightFor(cy);el.style.setProperty('--b',el._b.toFixed(3))}
-function place(x,y){
-  var w=el.offsetWidth,h=el.offsetHeight;
-  x=Math.max(-w/2,Math.min(innerWidth-w/2,x));y=Math.max(-h/2,Math.min(innerHeight-h/2,y)); // keep the centre on screen
-  el._x=x;el._y=y;el.style.transform='translate('+x+'px,'+y+'px) rotate('+el._r+'deg) scale('+el._s+')';applyB();
-}
-function pivot(b,px0,py0,px1,py1,newS,newR){
-  var w=el.offsetWidth,h=el.offsetHeight,cx=b.x+w/2,cy=b.y+h/2;
-  var k=newS/b.s,da=(newR-b.r)*Math.PI/180,c=Math.cos(da),sn=Math.sin(da);
-  var vx=(px0-cx)*k,vy=(py0-cy)*k,rx=vx*c-vy*sn,ry=vx*sn+vy*c;
-  el._s=newS;el._r=newR;place(px1-rx-w/2,py1-ry-h/2);
-}
-// --- opaque-pixel hit testing: map a screen point back into the image and sample its alpha
-var ac=document.createElement('canvas'),actx=null,AW=0,AH=0,alpha=null;
-function buildAlpha(){
-  AW=img.naturalWidth;AH=img.naturalHeight;ac.width=AW;ac.height=AH;
-  actx=ac.getContext('2d',{willReadFrequently:true});actx.drawImage(img,0,0);
-  alpha=actx.getImageData(0,0,AW,AH).data;
-}
-function opaqueAt(px,py){
-  if(!alpha)return false;
-  var w=el.offsetWidth,h=el.offsetHeight,cx=el._x+w/2,cy=el._y+h/2,a=-el._r*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
-  var dx=px-cx,dy=py-cy,lx=(dx*c-dy*s)/el._s+w/2,ly=(dx*s+dy*c)/el._s+h/2;
-  var ix=Math.floor(lx/w*AW),iy=Math.floor(ly/h*AH);
-  if(ix<0||iy<0||ix>=AW||iy>=AH)return false;
-  return alpha[(iy*AW+ix)*4+3]>40;
-}
-// --- gestures (same approach as Stickers)
-var P={},base=null;
-function ids(){return Object.keys(P)}
-function rebase(){
-  var k=ids(),b={s:el._s,r:el._r,x:el._x,y:el._y};
-  if(k.length===1){b.mx=P[k[0]].x;b.my=P[k[0]].y}
-  else if(k.length>=2){var p=P[k[0]],q=P[k[1]];b.mx=(p.x+q.x)/2;b.my=(p.y+q.y)/2;b.d=Math.max(1,Math.hypot(q.x-p.x,q.y-p.y));b.a=Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI}
-  base=b;
-}
-function addPointer(e){
-  if(ids().length>=2)return false;
-  P[e.pointerId]={x:e.clientX,y:e.clientY};
-  try{board.setPointerCapture(e.pointerId)}catch(_){}
-  el.classList.add('held');rebase();return true;
-}
+var N=8,PX=40,board=document.getElementById('board'),stage=document.getElementById('stage'),bob=document.getElementById('bob');
+var imgs=[],loaded=0,shown=-1;
+function show(i){i=((i%N)+N)%N;if(i===shown)return;if(shown>=0)imgs[shown].classList.remove('on');imgs[i].classList.add('on');shown=i}
+for(var i=0;i<N;i++){(function(i){
+  var im=new Image();im.alt=i===0?'Rock shard with a fish symbol scratched into it':'';im.draggable=false;
+  im.onload=im.onerror=function(){
+    var done=function(){if(++loaded===N)ready()};
+    if(im.decode)im.decode().then(done,done);else done();
+  };
+  im.src='frames/f'+i+'.webp';bob.appendChild(im);imgs.push(im);
+})(i)}
+var pos=0; // continuous frame position; wraps; displayed frame = round(pos) mod N
+function setPos(p){pos=p;show(Math.round(pos))}
+function ready(){show(0);stage.classList.add('ready');window.__tt.ready=true}
+// --- horizontal drag spins the turntable (drag right = rotate forward)
+var id=null,lastX=0,samples=[],raf=0,vel=0;
+function stopInertia(){if(raf){cancelAnimationFrame(raf);raf=0}vel=0}
 board.addEventListener('pointerdown',function(e){
-  var n=ids().length;
-  if(n===0){if(!opaqueAt(e.clientX,e.clientY))return;} // transparent area: no grab
-  else if(e.pointerType==='mouse')return;               // a second finger anywhere joins the held artifact
-  if(addPointer(e))e.preventDefault();
+  if(id!==null)return;
+  id=e.pointerId;lastX=e.clientX;samples=[{t:performance.now(),x:e.clientX}];stopInertia();
+  try{board.setPointerCapture(id)}catch(_){}
+  board.classList.add('drag');e.preventDefault();
 });
 board.addEventListener('pointermove',function(e){
-  var p=P[e.pointerId];if(!p||!base)return;
-  p.x=e.clientX;p.y=e.clientY;var k=ids();
-  if(k.length===1)place(base.x+p.x-base.mx,base.y+p.y-base.my);
-  else{
-    var a=P[k[0]],b=P[k[1]],mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
-    var d=Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)),ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
-    var da=ang-base.a;da=((da+540)%360)-180;
-    pivot(base,base.mx,base.my,mx,my,clampS(base.s*d/base.d),base.r+da);
-  }
+  if(e.pointerId!==id)return;
+  var dx=e.clientX-lastX;lastX=e.clientX;setPos(pos+dx/PX);
+  var t=performance.now();samples.push({t:t,x:e.clientX});while(samples.length>2&&t-samples[0].t>100)samples.shift();
 });
 function up(e){
-  if(!P[e.pointerId])return;delete P[e.pointerId];
+  if(e.pointerId!==id)return;id=null;
   try{board.releasePointerCapture(e.pointerId)}catch(_){}
-  if(ids().length===0){base=null;el.classList.remove('held')}else rebase();
+  board.classList.remove('drag');
+  var s=samples,now=performance.now();
+  if(s.length>1&&now-s[s.length-1].t<80){var dt=(s[s.length-1].t-s[0].t)/1000;if(dt>0)vel=(s[s.length-1].x-s[0].x)/dt/PX} // frames per second
+  else vel=0;
+  vel=Math.max(-14,Math.min(14,vel));
+  if(Math.abs(vel)>0.8)inertia();else snap();
 }
 board.addEventListener('pointerup',up);board.addEventListener('pointercancel',up);
-// desktop: ctrl+wheel (trackpad pinch) scales, shift+wheel rotates, about the cursor
-board.addEventListener('wheel',function(e){
-  if(!e.ctrlKey&&!e.shiftKey)return;
-  e.preventDefault();
-  if(!opaqueAt(e.clientX,e.clientY))return;
-  var b={s:el._s,r:el._r,x:el._x,y:el._y},ns=el._s,nr=el._r;
-  if(e.ctrlKey)ns=clampS(el._s*Math.exp(-e.deltaY*0.01));else nr=el._r+((e.deltaX||e.deltaY)*0.3);
-  pivot(b,e.clientX,e.clientY,e.clientX,e.clientY,ns,nr);
-},{passive:false});
+function inertia(){
+  var last=performance.now();
+  function step(t){
+    var dt=Math.min(0.05,Math.max(0,(t-last)/1000));last=t;
+    setPos(pos+vel*dt);vel*=Math.pow(0.04,dt); // friction: ~4% of the speed left after 1s
+    if(Math.abs(vel)<0.8){raf=0;snap();return}
+    raf=requestAnimationFrame(step);
+  }
+  raf=requestAnimationFrame(step);
+}
+function snap(){ // glide to the nearest whole frame
+  var target=Math.round(pos);
+  (function step(){
+    var d=target-pos;if(Math.abs(d)<0.02){setPos(target);raf=0;return}
+    setPos(pos+d*0.25);raf=requestAnimationFrame(step);
+  })();
+}
+// desktop trackpad / wheel: horizontal scroll also spins
+board.addEventListener('wheel',function(e){e.preventDefault();stopInertia();setPos(pos-(e.deltaX||e.deltaY)/PX);clearTimeout(board._w);board._w=setTimeout(snap,120)},{passive:false});
 ['gesturestart','gesturechange','gestureend'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault()},{passive:false})});
 document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
 document.addEventListener('contextmenu',function(e){e.preventDefault()});
-function center(){place((innerWidth-el.offsetWidth)/2,(innerHeight-el.offsetHeight)/2)}
-function init(){buildAlpha();center();el.classList.add('ready')}
-if(img.complete&&img.naturalWidth)init();else img.addEventListener('load',init);
-window.addEventListener('resize',function(){place(el._x,el._y)});
-window.__art=el;window.__opaqueAt=opaqueAt;
+window.__tt={get frame(){return shown},get pos(){return pos},ready:false,N:N};
 })();
 </script>
 <script src="../menu.js"></script></body></html>
