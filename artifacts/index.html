@@ -144,7 +144,7 @@ function ss(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x)}
 function verseOffset(phi){return phi<=RR?vS*phi*phi*phi/(3*RR*RR):vS*(RR/3+(phi-RR))} // ease-in (quadratic speed ramp) then steady speed
 function updateVerse(){
   if(!VH)return;
-  var R=pos/N,phi=((R%CYCLE)+CYCLE)%CYCLE,top=vY0-verseOffset(phi);
+  var R=-pos/N,phi=((R%CYCLE)+CYCLE)%CYCLE,top=vY0-verseOffset(phi); // verse runs on -pos: dragging left-to-right raises it; the stone's own spin mapping is untouched
   VT.style.transform='translate3d(0,'+top.toFixed(2)+'px,0)';
   for(var i=0;i<vl.length;i++){
     var t=(top+(i+.5)*vLine)/VH; // per-line opacity (keeps the difference blend intact on Safari, unlike mask-image)
@@ -160,7 +160,7 @@ var T0=performance.now()/1000,PH=[Math.random()*6.28,Math.random()*6.28,Math.ran
 function tiltAt(t){return 3*(0.5*Math.sin(6.2832*t/11+PH[0])+0.3*Math.sin(6.2832*t/17+PH[1])+0.2*Math.sin(6.2832*t/26+PH[2]))}
 var curTilt=0;
 (function tick(){curTilt=tiltAt(performance.now()/1000-T0);tiltEl.style.transform='rotate('+curTilt.toFixed(3)+'deg)';requestAnimationFrame(tick)})();
-window.__tt={setPos:function(p){setPos(p)},verseTop:function(){return vY0-verseOffset((((pos/N)%CYCLE)+CYCLE)%CYCLE)},get stageTop(){return H0()},get tilt(){return curTilt},get loadedCount(){return nLoaded},all:false,get frame(){return cur},get pos(){return pos},ready:false,N:N};
+window.__tt={setPos:function(p){setPos(p)},verseTop:function(){return vY0-verseOffset((((-pos/N)%CYCLE)+CYCLE)%CYCLE)},get stageTop(){return H0()},get tilt(){return curTilt},get loadedCount(){return nLoaded},all:false,get frame(){return cur},get pos(){return pos},ready:false,N:N};
 })();
 </script>
 <script src="../menu.js"></script></body></html>
