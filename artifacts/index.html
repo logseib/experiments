@@ -16,8 +16,17 @@ html,body{margin:0;height:100%;background:#0e0e0e;overflow:hidden;overscroll-beh
 @keyframes bob{0%,100%{transform:translateY(-5px)}50%{transform:translateY(5px)}}
 #bob img{position:absolute;inset:0;width:100%;height:100%;display:block;visibility:hidden;pointer-events:none;-webkit-user-drag:none}
 #bob img.on{visibility:visible}
+@font-face{font-family:'Archivo Expanded';src:url(fonts/archivo-expanded.woff2) format('woff2');font-weight:400 700;font-style:normal;font-display:swap}
+/* verse: sits ABOVE the stone as a direct child of <body> (no isolating ancestor), so difference blends against the stone and the dark page */
+#verse{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:5;mix-blend-mode:difference;color:#fff;-webkit-user-select:none;user-select:none}
+#vt{position:absolute;left:20px;top:0;will-change:transform;font-family:'Archivo Expanded','Archivo','Helvetica Neue',Arial,sans-serif;font-weight:500;letter-spacing:.035em;white-space:nowrap;visibility:hidden}
+#vt.on{visibility:visible}
+#vt .vl{display:block;opacity:0}
+#vt .vl span{display:inline-block}
+#vt .vj{font-size:.78em;font-weight:500;letter-spacing:.01em}
 </style></head><body>
 <div id="board"><div id="stage"><div id="tilt"><div id="bob"></div></div></div></div>
+<div id="verse" role="img" aria-label="For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life. John 3:16"><div id="vt" aria-hidden="true"></div></div>
 <script>
 (function(){
 var N=193,PX=4,board=document.getElementById('board'),stage=document.getElementById('stage'),bob=document.getElementById('bob'),tiltEl=document.getElementById('tilt');
@@ -53,7 +62,7 @@ loadOne(0,function(){pump()});qi=order.indexOf(0)+1; // order[0] is 0
 function calcPX(){PX=Math.min(innerWidth,520)*1.5/N} // one full rotation = ~1.5 screen widths of drag
 calcPX();window.addEventListener('resize',calcPX);
 // pos = continuous frame position (unbounded, wraps); displayed frame = nearest loaded to round(pos) mod N
-function setPos(p){pos=p;render()}
+function setPos(p){pos=p;render();updateVerse()}
 // --- horizontal drag spins the turntable (drag right = rotate forward)
 var id=null,lastX=0,samples=[],raf=0,vel=0;
 function stopInertia(){if(raf){cancelAnimationFrame(raf);raf=0}vel=0}
@@ -101,12 +110,43 @@ board.addEventListener('wheel',function(e){e.preventDefault();stopInertia();setP
 ['gesturestart','gesturechange','gestureend'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault()},{passive:false})});
 document.addEventListener('touchmove',function(e){e.preventDefault()},{passive:false});
 document.addEventListener('contextmenu',function(e){e.preventDefault()});
-// organic idle tilt (rotate around z): three incommensurate sines, kept within +-5deg; keeps running during drag
+// ---- scrolling verse (KJV John 3:16), driven by the stone's UNWRAPPED rotation (pos/N turns), not by page scroll
+function H0(){return innerHeight/2-stage.offsetHeight/2}
+var VT=document.getElementById('vt'),LINES=['For God so','loved the','world, that','he gave his','only','begotten','Son, that','whosoever','believeth in','him should','not perish,','but have','everlasting','life.','','JOHN 3:16'];
+var vl=LINES.map(function(t,i){var d=document.createElement('div');d.className='vl'+(i===LINES.length-1?' vj':'');var sp=document.createElement('span');sp.textContent=t||'\u00a0';d.appendChild(sp);VT.appendChild(d);return d});
+var CYCLE=1,RR=0.12,VH=0,vLine=0,vY0=0,vS=0; // CYCLE = turns per verse pass; RR = turns of ease-in ramp
+function layoutVerse(){
+  var W=Math.min(innerWidth,520),H=innerHeight;
+  VT.style.fontSize='100px';VT.style.visibility='hidden';
+  var mx=0;vl.forEach(function(d){if(!d.classList.contains('vj'))mx=Math.max(mx,d.firstChild.getBoundingClientRect().width)});
+  var fs=100*(0.82*W)/Math.max(1,mx);VT.style.fontSize=fs.toFixed(2)+'px';
+  vLine=fs*1.12;vl.forEach(function(d){d.style.height=vLine+'px';d.style.lineHeight=vLine+'px'});
+  VH=H;vY0=H-48; // top of the verse at rotation 0: just inside the bottom edge
+  var stageTop=H/2-stage.offsetHeight/2,D1=Math.max(40,vY0-stageTop);
+  vS=D1/(0.25-2*RR/3); // steady scroll rate (px per turn) so that the first line reaches the stone's top after exactly 1/4 turn
+  VT.style.visibility='';VT.classList.add('on');updateVerse();
+}
+function ss(a,b,x){x=Math.max(0,Math.min(1,(x-a)/(b-a)));return x*x*(3-2*x)}
+function verseOffset(phi){return phi<=RR?vS*phi*phi*phi/(3*RR*RR):vS*(RR/3+(phi-RR))} // ease-in (quadratic speed ramp) then steady speed
+function updateVerse(){
+  if(!VH)return;
+  var R=pos/N,phi=((R%CYCLE)+CYCLE)%CYCLE,top=vY0-verseOffset(phi);
+  VT.style.transform='translate3d(0,'+top.toFixed(2)+'px,0)';
+  for(var i=0;i<vl.length;i++){
+    var t=(top+(i+.5)*vLine)/VH; // per-line opacity (keeps the difference blend intact on Safari, unlike mask-image)
+    var a=ss(0.02,0.25,t)*(1-ss(0.70,1.0,t));
+    vl[i].style.opacity=a<0.004?'0':a.toFixed(3);
+  }
+}
+window.addEventListener('resize',layoutVerse);
+if(document.fonts&&document.fonts.load){document.fonts.load("500 40px 'Archivo Expanded'").then(layoutVerse,layoutVerse)}
+layoutVerse();
+// organic idle tilt (rotate around z): three incommensurate sines, kept within +-3deg, slow; keeps running during drag
 var T0=performance.now()/1000,PH=[Math.random()*6.28,Math.random()*6.28,Math.random()*6.28];
-function tiltAt(t){return 5*(0.5*Math.sin(6.2832*t/5.3+PH[0])+0.3*Math.sin(6.2832*t/8.7+PH[1])+0.2*Math.sin(6.2832*t/12.9+PH[2]))}
+function tiltAt(t){return 3*(0.5*Math.sin(6.2832*t/11+PH[0])+0.3*Math.sin(6.2832*t/17+PH[1])+0.2*Math.sin(6.2832*t/26+PH[2]))}
 var curTilt=0;
 (function tick(){curTilt=tiltAt(performance.now()/1000-T0);tiltEl.style.transform='rotate('+curTilt.toFixed(3)+'deg)';requestAnimationFrame(tick)})();
-window.__tt={get tilt(){return curTilt},get loadedCount(){return nLoaded},all:false,get frame(){return cur},get pos(){return pos},ready:false,N:N};
+window.__tt={setPos:function(p){setPos(p)},verseTop:function(){return vY0-verseOffset((((pos/N)%CYCLE)+CYCLE)%CYCLE)},get stageTop(){return H0()},get tilt(){return curTilt},get loadedCount(){return nLoaded},all:false,get frame(){return cur},get pos(){return pos},ready:false,N:N};
 })();
 </script>
 <script src="../menu.js"></script></body></html>
