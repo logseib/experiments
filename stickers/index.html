@@ -62,8 +62,14 @@ function make(color,center,animate,faceName){
   drag(el);
 }
 var active=null; // sticker currently held with exactly one finger (for a second finger landing off the shape)
+function removeSticker(el){
+  if(el._gone)return;el._gone=true;el.style.pointerEvents='none';
+  var f=el.querySelector('.face');
+  if(f&&f.animate){var a=f.animate([{transform:'scale(1)',opacity:1},{transform:'scale(1.12)',opacity:1,offset:.35},{transform:'scale(0)',opacity:0}],{duration:260,easing:'ease-in'});a.onfinish=function(){el.remove()}}
+  else el.remove();
+}
 function drag(el){
-  var P={},base=null;
+  var P={},base=null,g=null,lastTap=0,lastX=0,lastY=0;
   function ids(){return Object.keys(P)}
   function rebase(){
     var k=ids(),b={s:el._s,r:el._r,x:el._x,y:el._y,n:k.length};
@@ -76,6 +82,7 @@ function drag(el){
   }
   el._addPointer=function(e){
     if(ids().length>=2)return false;
+    if(!ids().length)g={t:performance.now(),x:e.clientX,y:e.clientY,multi:false,moved:false};else if(g)g.multi=true;
     P[e.pointerId]={x:e.clientX,y:e.clientY};
     try{el.setPointerCapture(e.pointerId)}catch(_){}
     el.style.zIndex=++z;el.classList.add('held');
@@ -87,6 +94,7 @@ function drag(el){
   el.addEventListener('pointermove',function(e){
     var p=P[e.pointerId];if(!p||!base)return;
     p.x=e.clientX;p.y=e.clientY;var k=ids();
+    if(g&&Math.hypot(p.x-g.x,p.y-g.y)>10)g.moved=true;
     if(k.length===1){place(el,base.x+p.x-base.mx,base.y+p.y-base.my)}
     else{
       var a=P[k[0]],b=P[k[1]],mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
@@ -99,7 +107,13 @@ function drag(el){
     if(!P[e.pointerId])return;delete P[e.pointerId];
     try{el.releasePointerCapture(e.pointerId)}catch(_){}
     var n=ids().length;
-    if(n===0){base=null;el.classList.remove('held');if(active===el)active=null}
+    if(n===0){base=null;el.classList.remove('held');if(active===el)active=null;
+      var now=performance.now();
+      if(g&&!g.multi&&!g.moved&&now-g.t<300){
+        if(now-lastTap<380&&Math.hypot(e.clientX-lastX,e.clientY-lastY)<30){lastTap=0;g=null;removeSticker(el);return}
+        lastTap=now;lastX=e.clientX;lastY=e.clientY;
+      }else lastTap=0;
+      g=null}
     else{rebase();active=el} // back to one-finger drag from where the remaining finger is: no jump
   }
   el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
