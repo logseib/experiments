@@ -1,7 +1,8 @@
 /* Shared experiments menu. Include in each experiment: <script src="../menu.js"></script> */
 (function () {
   var EXPERIMENTS = [
-    { name: 'Stickers', path: 'stickers/' }
+    { name: 'Stickers', path: 'stickers/' },
+    { name: 'Arrows', path: 'arrows/' }
   ];
 
   var cs = document.currentScript;
@@ -10,7 +11,7 @@
 
   var css = '' +
     '#xm-wrap{position:fixed;left:calc(20px + env(safe-area-inset-left));bottom:calc(20px + env(safe-area-inset-bottom));z-index:100001;font:15px/1.2 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation}' +
-    '#xm-btn{width:40px;height:40px;border-radius:50%;border:0;padding:0;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s,background .15s;opacity:.9}' +
+    '#xm-btn{width:40px;height:40px;border-radius:50%;border:0;padding:0;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .15s,background .15s;opacity:.95;box-shadow:0 0 0 1px rgba(255,255,255,.22),0 2px 8px rgba(0,0,0,.35)}' +
     '#xm-btn:active{transform:scale(.9);background:#3a3a3a}' +
     '#xm-pop{position:absolute;left:0;bottom:50px;min-width:170px;background:#222;border-radius:14px;padding:6px;box-shadow:0 8px 24px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.4);display:none}' +
     '#xm-pop.open{display:block}' +
