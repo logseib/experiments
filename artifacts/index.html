@@ -9,7 +9,7 @@
 html,body{margin:0;height:100%;background:#0e0e0e;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
 #board{position:fixed;inset:0;touch-action:none;cursor:grab}
 #board.drag{cursor:grabbing}
-#stage{position:absolute;left:50%;top:50%;width:min(70vw,340px);aspect-ratio:637/725;transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .4s ease}
+#stage{position:absolute;left:50%;top:50%;width:min(70vw,340px);aspect-ratio:584/640;transform:translate(-50%,-50%);pointer-events:none;opacity:0;transition:opacity .4s ease}
 #stage.ready{opacity:1}
 #bob{position:absolute;inset:0;animation:bob 5s ease-in-out infinite;filter:drop-shadow(0 14px 14px rgba(0,0,0,.6)) drop-shadow(0 2px 3px rgba(0,0,0,.6))}
 @keyframes bob{0%,100%{transform:translateY(-5px)}50%{transform:translateY(5px)}}
@@ -19,7 +19,7 @@ html,body{margin:0;height:100%;background:#0e0e0e;overflow:hidden;overscroll-beh
 <div id="board"><div id="stage"><div id="bob"></div></div></div>
 <script>
 (function(){
-var N=8,PX=40,board=document.getElementById('board'),stage=document.getElementById('stage'),bob=document.getElementById('bob');
+var N=48,PX=12,board=document.getElementById('board'),stage=document.getElementById('stage'),bob=document.getElementById('bob');
 var imgs=[],loaded=0,shown=-1;
 function show(i){i=((i%N)+N)%N;if(i===shown)return;if(shown>=0)imgs[shown].classList.remove('on');imgs[i].classList.add('on');shown=i}
 for(var i=0;i<N;i++){(function(i){
@@ -28,8 +28,10 @@ for(var i=0;i<N;i++){(function(i){
     var done=function(){if(++loaded===N)ready()};
     if(im.decode)im.decode().then(done,done);else done();
   };
-  im.src='frames/f'+i+'.webp';bob.appendChild(im);imgs.push(im);
+  im.src='frames2/f'+(i<10?'0':'')+i+'.webp';bob.appendChild(im);imgs.push(im);
 })(i)}
+function calcPX(){PX=Math.min(innerWidth,520)*1.5/N} // one full rotation = ~1.5 screen widths of drag
+calcPX();window.addEventListener('resize',calcPX);
 var pos=0; // continuous frame position; wraps; displayed frame = round(pos) mod N
 function setPos(p){pos=p;show(Math.round(pos))}
 function ready(){show(0);stage.classList.add('ready');window.__tt.ready=true}
@@ -54,16 +56,16 @@ function up(e){
   var s=samples,now=performance.now();
   if(s.length>1&&now-s[s.length-1].t<80){var dt=(s[s.length-1].t-s[0].t)/1000;if(dt>0)vel=(s[s.length-1].x-s[0].x)/dt/PX} // frames per second
   else vel=0;
-  vel=Math.max(-14,Math.min(14,vel));
-  if(Math.abs(vel)>0.8)inertia();else snap();
+  vel=Math.max(-90,Math.min(90,vel)); // frames/s
+  if(Math.abs(vel)>3)inertia();else snap();
 }
 board.addEventListener('pointerup',up);board.addEventListener('pointercancel',up);
 function inertia(){
   var last=performance.now();
   function step(t){
     var dt=Math.min(0.05,Math.max(0,(t-last)/1000));last=t;
-    setPos(pos+vel*dt);vel*=Math.pow(0.04,dt); // friction: ~4% of the speed left after 1s
-    if(Math.abs(vel)<0.8){raf=0;snap();return}
+    setPos(pos+vel*dt);vel*=Math.pow(0.06,dt); // friction: ~6% of the speed left after 1s
+    if(Math.abs(vel)<3){raf=0;snap();return}
     raf=requestAnimationFrame(step);
   }
   raf=requestAnimationFrame(step);
