@@ -12,7 +12,7 @@ html,body{margin:0;width:100%;height:100%;background:#d9d9d9;overflow:hidden;ove
 <canvas id="c"></canvas>
 <script>
 (function(){
-var SP=50, N=28, DUR=200, COLOR='rgba(0,0,0,0.6)';
+var SP=40, N=28, DUR=200, COLOR='rgba(0,0,0,0.6)';
 var cv=document.getElementById('c'), ctx=cv.getContext('2d');
 var W=0,H=0,dpr=1,cols=0,rows=0,ox=0,oy=0;
 var cx=[],cy=[],ang=[],dist=[];
@@ -20,7 +20,7 @@ var pressed=false,pid=null,px=0,py=0;
 var t=0,from=0,to=0,t0=0,raf=0,dirty=true;
 
 // Shapes: N points each, same ordering, so they interpolate. Arrow points along +x, radius <= 10 (fits a 20px box around cell center).
-var verts=[[7.5,0],[1,6.5],[1,2],[-7.5,2],[-7.5,-2],[1,-2],[1,-6.5]];
+var verts=[[6.3,0],[0.84,5.2],[0.84,1.6],[-6.3,1.6],[-6.3,-1.6],[0.84,-1.6],[0.84,-5.2]];
 var arrow=[];
 (function(){
   var per=N/verts.length; // 4 pts per edge
@@ -47,7 +47,7 @@ function layout(){
   dirty=true;schedule();
 }
 function aim(){
-  var D=Math.hypot(W,H)||1;for(var i=0;i<cx.length;i++){var dx=px-cx[i],dy=py-cy[i];ang[i]=Math.atan2(dy,dx);dist[i]=Math.min(1,Math.hypot(dx,dy)/D);}
+  var D=Math.hypot(W,H)||1,ks=Object.keys(ptrs);if(!ks.length)return;for(var i=0;i<cx.length;i++){var bd=1e9,bx=0,by=0;for(var j=0;j<ks.length;j++){var q=ptrs[ks[j]],dx=q.x-cx[i],dy=q.y-cy[i],d=dx*dx+dy*dy;if(d<bd){bd=d;bx=dx;by=dy;}}ang[i]=Math.atan2(by,bx);dist[i]=Math.min(1,Math.sqrt(bd)/D);}
 }
 function ease(x){return x<.5?2*x*x:1-Math.pow(-2*x+2,2)/2;}
 function draw(){
@@ -87,29 +87,30 @@ function setTarget(v){
   schedule();
 }
 
+var ptrs={};
 function down(e){
-  if(pressed)return;
   if(e.target.closest&&e.target.closest('#xm-wrap'))return;
   if(e.pointerType==='mouse'&&e.button!==0)return;
-  pressed=true;pid=e.pointerId;px=e.clientX;py=e.clientY;
-  try{cv.setPointerCapture(pid);}catch(_){}
+  ptrs[e.pointerId]={x:e.clientX,y:e.clientY};pressed=true;
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
   aim();dirty=true;setTarget(1);schedule();
   e.preventDefault();
 }
 function move(e){
-  if(!pressed||e.pointerId!==pid)return;
-  px=e.clientX;py=e.clientY;aim();dirty=true;schedule();
+  var q=ptrs[e.pointerId];if(!q)return;
+  q.x=e.clientX;q.y=e.clientY;aim();dirty=true;schedule();
 }
 function up(e){
-  if(!pressed||e.pointerId!==pid)return;
-  pressed=false;pid=null;
-  setTarget(0);schedule();
+  if(!ptrs[e.pointerId])return;
+  delete ptrs[e.pointerId];
+  if(Object.keys(ptrs).length){aim();dirty=true;schedule();}
+  else{pressed=false;setTarget(0);schedule();}
 }
 window.addEventListener('pointerdown',down,{passive:false});
 window.addEventListener('pointermove',move,{passive:true});
 window.addEventListener('pointerup',up);
 window.addEventListener('pointercancel',up);
-window.addEventListener('blur',function(){if(pressed){pressed=false;pid=null;setTarget(0);}});
+window.addEventListener('blur',function(){if(pressed){ptrs={};pressed=false;setTarget(0);}});
 window.addEventListener('resize',layout);
 window.addEventListener('orientationchange',layout);
 ['gesturestart','gesturechange','gestureend','contextmenu','selectstart','dragstart'].forEach(function(n){
