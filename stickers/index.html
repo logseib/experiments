@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#141414">
+<title>Fun Mode</title>
+<style>
+html,body{margin:0;height:100%;background:#141414;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#board{position:fixed;inset:0;touch-action:none}
+.st{position:absolute;left:0;top:0;width:min(62vw,340px);}
+.st.face-sticker{width:min(42vw,220px)}
+.st{touch-action:none;cursor:grab;will-change:transform}
+.st svg{display:block;width:100%;height:auto;overflow:visible;pointer-events:none}
+.st svg path,.st svg circle{pointer-events:visiblePainted}
+.st{pointer-events:none}
+.st .face{transition:transform .45s cubic-bezier(.3,1.35,.5,1),filter .45s ease;filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+.st.held{cursor:grabbing}
+.st.held .face{transform:translateY(-10px) scale(1.02);filter:drop-shadow(0 12px 12px rgba(0,0,0,.3)) drop-shadow(0 3px 3px rgba(0,0,0,.2))}
+.st.drop .face{animation:drop .38s cubic-bezier(.2,1.4,.4,1)}
+@keyframes drop{from{transform:translateY(-40px) scale(1.4);opacity:0}to{transform:none;opacity:1}}
+#add{position:fixed;right:calc(20px + env(safe-area-inset-right));bottom:calc(20px + env(safe-area-inset-bottom));width:60px;height:60px;border-radius:50%;border:0;background:#2a2a2a;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:100000;-webkit-tap-highlight-color:transparent;transition:transform .15s,background .15s}
+#add:active{transform:scale(.9);background:#3a3a3a}
+</style></head><body>
+<div id="board"></div>
+<button id="add" aria-label="Add sticker"><svg width="26" height="26" viewBox="0 0 26 26"><path d="M13 3v20M3 13h20" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg></button>
+<template id="tpl"><svg viewBox="0 0 2918.69 905.35"><path class="bg" d="M2309.79,289.1V151.3c0-83.56-67.74-151.3-151.3-151.3H151.3C67.74,0,0,67.74,0,151.3v162.34c0,83.56,67.74,151.3,151.3,151.3H457.6c83.56,0,151.3,67.74,151.3,151.3v137.8c0,83.56,67.74,151.3,151.3,151.3h2007.18c83.56,0,151.3-67.74,151.3-151.3v-162.34c0-83.56-67.74-151.3-151.3-151.3h-306.3c-83.56,0-151.3-67.74-151.3-151.3Z"/><g fill="#fff"><path d="M107.66,264.66h50.85c0,41.34,32.92,57.44,111.58,57.44,68.41,0,96.94-11.34,96.94-42.44s-21.22-35.12-99.51-40.24l-14.63-1.1c-101.7-6.22-137.55-26.71-137.55-79.38s50.12-73.53,141.21-73.53c98.77,0,148.53,29.27,149.99,89.63h-50.48c0-40.61-36.22-53.05-103.53-53.05-62.92,0-86.7,10.24-86.7,36.95,0,30.36,21.95,36.95,93.65,42.07l15.36,1.1c91.82,6.58,142.67,13.9,142.67,76.09s-55.61,80.48-147.43,80.48c-105.36,0-160.6-23.41-162.43-94.02Z"/><path d="M433.24,91.99h299.25v41.7h-125.11v217.67h-48.66V133.7h-125.48v-41.7Z"/><path d="M773.82,91.99h49.02V351.36h-49.02V91.99Z"/><path d="M869.67,221.49c0-82.68,69.87-136.09,169.01-136.09,88.53,0,153.65,45,161.33,104.99h-51.58c-6.22-30.73-46.46-63.65-109.75-63.65-71.7,0-118.16,39.51-118.16,94.75s46.46,95.48,118.16,95.48c63.29,0,103.53-33.29,109.75-64.39h51.58c-7.32,60.73-72.8,106.09-161.33,106.09-99.14,0-169.01-54.14-169.01-137.19Z"/><path d="M1246.83,91.99h49.02V232.1l179.26-140.11h73.17l-134.99,106.46,134.99,152.92h-60.36l-110.85-124.38-81.21,64.02v60.36h-49.02V91.99Z"/><path d="M1591.8,91.99h255.35v37.68h-206.33v74.26h199.01v35.12h-199.01v74.26h206.33v38.05h-255.35V91.99Z"/><path d="M1897.62,91.99h198.65c68.78,0,100.97,25.97,100.97,74.63,0,34.39-18.66,57.8-54.14,66.95,31.46,1.1,52.31,19.02,52.31,49.75v68.04h-48.66v-61.09c0-23.41-11.71-33.29-35.12-33.29h-164.99v94.38h-49.02V91.99Zm188.4,124.75c39.51,0,60.73-12.07,60.73-43.53s-21.22-41.34-60.73-41.34h-139.38v84.87h139.38Z"/><path d="M721.67,706.34h50.85c0,41.34,32.92,57.43,111.58,57.43,68.41,0,96.94-11.34,96.94-42.44s-21.22-35.12-99.51-40.24l-14.63-1.1c-101.7-6.22-137.55-26.71-137.55-79.39s50.12-73.53,141.21-73.53c98.77,0,148.53,29.27,149.99,89.63h-50.48c0-40.61-36.22-53.04-103.53-53.04-62.92,0-86.7,10.24-86.7,36.95,0,30.36,21.95,36.95,93.65,42.07l15.36,1.1c91.82,6.58,142.67,13.9,142.67,76.09s-55.61,80.48-147.43,80.48c-105.36,0-160.6-23.41-162.43-94.02Z"/><path d="M1193.22,533.67h62.19l143.04,259.37h-52.31l-31.83-59.26h-180.35l-31.83,59.26h-52.68l143.77-259.37Zm101.33,163.53l-70.24-131.33-70.61,131.33h140.84Z"/><path d="M1438.68,533.67h73.9l120.36,206.33,119.99-206.33h73.53v259.37h-48.66v-212.55l-122.19,212.55h-45.73l-122.19-212.55v212.55h-49.02v-259.37Z"/><path d="M1888.27,533.67h187.3c63.29,0,103.16,35.12,103.16,92.92s-39.88,92.92-103.16,92.92h-138.28v73.53h-49.02v-259.37Zm177.06,144.5c38.41,0,62.92-15.37,62.92-51.58s-24.51-51.22-62.92-51.22h-128.04v102.8h128.04Z"/><path d="M2225.93,533.67h49.02v217.67h194.99v41.7h-244.01v-259.37Z"/><path d="M2512.74,533.67h255.35v37.68h-206.33v74.26h199.01v35.12h-199.01v74.26h206.33v38.05h-255.35v-259.37Z"/></g></svg></template>
+<script>
+(function(){
+var board=document.getElementById('board'),tpl=document.getElementById('tpl'),z=1;
+var SWATCHES=['#1bf27f','#0033f5','#ff2020','#a62bf8'],last='#f24a16';
+function pick(){var c;do{c=SWATCHES[Math.floor(Math.random()*SWATCHES.length)]}while(c===last);last=c;return c}
+function place(el,x,y){el._x=x;el._y=y;el.style.transform='translate('+x+'px,'+y+'px) rotate('+el._r+'deg) scale('+el._s+')'}
+var MINS=0.4,MAXS=3;
+function clampS(v){return Math.max(MINS,Math.min(MAXS,v))}
+// transform el so the point that was at (px0,py0) in the baseline state ends at (px1,py1), with scale ratio and rotation delta applied about it
+function pivot(el,b,px0,py0,px1,py1,newS,newR){
+  var w=el.offsetWidth,h=el.offsetHeight,cx=b.x+w/2,cy=b.y+h/2;
+  var k=newS/b.s,da=(newR-b.r)*Math.PI/180,c=Math.cos(da),sn=Math.sin(da);
+  var vx=(px0-cx)*k,vy=(py0-cy)*k;
+  var rx=vx*c-vy*sn,ry=vx*sn+vy*c;
+  el._s=newS;el._r=newR;place(el,px1-rx-w/2,py1-ry-h/2);
+}
+var FACES=['george','elaine','jerry','kramer'];
+function faceSvg(name){
+  var NS='http://www.w3.org/2000/svg',s=document.createElementNS(NS,'svg');s.setAttribute('viewBox','0 0 600 600');
+  var im=document.createElementNS(NS,'image');im.setAttribute('href','stickers/'+name+'.png');im.setAttribute('width','600');im.setAttribute('height','600');im.style.pointerEvents='none';
+  var hit=document.createElementNS(NS,'circle');hit.setAttribute('cx','300');hit.setAttribute('cy','300');hit.setAttribute('r','268');hit.setAttribute('fill','transparent');
+  s.appendChild(im);s.appendChild(hit);return s;
+}
+function make(color,center,animate,faceName){
+  var el=document.createElement('div');el.className='st'+(faceName?' face-sticker':'');
+  var face=document.createElement('div');face.className='face';
+  if(faceName)face.appendChild(faceSvg(faceName));
+  else{face.appendChild(tpl.content.firstElementChild.cloneNode(true));face.querySelector('.bg').setAttribute('fill',color);}
+  el.appendChild(face);
+  el._r=(Math.random()*20-10);el._s=1;el.style.zIndex=++z;board.appendChild(el);
+  var w=el.offsetWidth,h=el.offsetHeight,W=innerWidth,H=innerHeight;
+  if(center)place(el,(W-w)/2,(H-h)/2);
+  else place(el,Math.random()*Math.max(0,W-w),20+Math.random()*Math.max(0,H-h-110));
+  if(animate){el.classList.add('drop');face.addEventListener('animationend',function(){el.classList.remove('drop')},{once:true})}
+  drag(el);
+}
+var active=null; // sticker currently held with exactly one finger (for a second finger landing off the shape)
+function drag(el){
+  var P={},base=null;
+  function ids(){return Object.keys(P)}
+  function rebase(){
+    var k=ids(),b={s:el._s,r:el._r,x:el._x,y:el._y,n:k.length};
+    if(k.length===1){b.mx=P[k[0]].x;b.my=P[k[0]].y}
+    else if(k.length>=2){
+      var p=P[k[0]],q=P[k[1]];b.mx=(p.x+q.x)/2;b.my=(p.y+q.y)/2;
+      b.d=Math.max(1,Math.hypot(q.x-p.x,q.y-p.y));b.a=Math.atan2(q.y-p.y,q.x-p.x)*180/Math.PI;
+    }
+    base=b;
+  }
+  el._addPointer=function(e){
+    if(ids().length>=2)return false;
+    P[e.pointerId]={x:e.clientX,y:e.clientY};
+    try{el.setPointerCapture(e.pointerId)}catch(_){}
+    el.style.zIndex=++z;el.classList.add('held');
+    rebase();active=ids().length===1?el:null;return true;
+  };
+  el.addEventListener('pointerdown',function(e){
+    if(!el._addPointer(e))return;e.preventDefault();e.stopPropagation();
+  });
+  el.addEventListener('pointermove',function(e){
+    var p=P[e.pointerId];if(!p||!base)return;
+    p.x=e.clientX;p.y=e.clientY;var k=ids();
+    if(k.length===1){place(el,base.x+p.x-base.mx,base.y+p.y-base.my)}
+    else{
+      var a=P[k[0]],b=P[k[1]],mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      var d=Math.max(1,Math.hypot(b.x-a.x,b.y-a.y)),ang=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+      var da=ang-base.a;da=((da+540)%360)-180; // shortest signed delta, avoids +-180 wrap jumps
+      pivot(el,base,base.mx,base.my,mx,my,clampS(base.s*d/base.d),base.r+da);
+    }
+  });
+  function up(e){
+    if(!P[e.pointerId])return;delete P[e.pointerId];
+    try{el.releasePointerCapture(e.pointerId)}catch(_){}
+    var n=ids().length;
+    if(n===0){base=null;el.classList.remove('held');if(active===el)active=null}
+    else{rebase();active=el} // back to one-finger drag from where the remaining finger is: no jump
+  }
+  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
+}
+// second finger landing anywhere else while a sticker is held with one finger joins that sticker
+board.addEventListener('pointerdown',function(e){
+  if(e.pointerType==='mouse'||!active||e.target.closest('.st'))return;
+  if(active._addPointer(e))e.preventDefault();
+});
+// desktop: ctrl+wheel (trackpad pinch) scales, shift+wheel rotates, about the cursor
+board.addEventListener('wheel',function(e){
+  var el=e.target.closest&&e.target.closest('.st');if(!el)return;
+  if(!e.ctrlKey&&!e.shiftKey)return;
+  e.preventDefault();
+  var b={s:el._s,r:el._r,x:el._x,y:el._y},ns=el._s,nr=el._r;
+  if(e.ctrlKey)ns=clampS(el._s*Math.exp(-e.deltaY*0.01));
+  else nr=el._r+((e.deltaX||e.deltaY)*0.3);
+  pivot(el,b,e.clientX,e.clientY,e.clientX,e.clientY,ns,nr);
+},{passive:false});
+['gesturestart','gesturechange','gestureend'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault()},{passive:false})});
+document.addEventListener('touchmove',function(e){if(e.touches.length>1)e.preventDefault()},{passive:false});
+document.addEventListener('contextmenu',function(e){e.preventDefault()});
+var lastKind=null;
+document.getElementById('add').addEventListener('click',function(){
+  var kinds=['text'].concat(FACES),k;do{k=kinds[Math.floor(Math.random()*kinds.length)]}while(k===lastKind);lastKind=k;
+  if(k==='text')make(pick(),false,true);else make(null,false,true,k);
+});
+make('#f24a16',true,false);
+})();
+</script>
+<script src="../menu.js"></script></body></html>
