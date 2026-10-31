@@ -12,7 +12,7 @@ html,body{margin:0;width:100%;height:100%;background:#e6e6e6;overflow:hidden;ove
 <canvas id="c"></canvas>
 <script>
 (function(){
-var SP=30, N=28, DUR=200, COLOR='#141414';
+var SP=50, N=28, DUR=200, COLOR='rgba(0,0,0,0.6)';
 var cv=document.getElementById('c'), ctx=cv.getContext('2d');
 var W=0,H=0,dpr=1,cols=0,rows=0,ox=0,oy=0;
 var cx=[],cy=[],ang=[];
@@ -30,7 +30,7 @@ var arrow=[];
   }
 })();
 var dot=[];
-for(var i=0;i<N;i++){var a=2*Math.PI*i/N;dot.push([5*Math.cos(a),5*Math.sin(a)]);}
+for(var i=0;i<N;i++){var a=2*Math.PI*i/N;dot.push([2.5*Math.cos(a),2.5*Math.sin(a)]);}
 
 function layout(){
   W=window.innerWidth;H=window.innerHeight;
