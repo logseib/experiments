@@ -25,7 +25,7 @@
 html,body{margin:0;height:100%;background:#e9e5dc;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
 #garden{position:fixed;inset:0;overflow:hidden;touch-action:none;cursor:grab;opacity:0;transition:opacity 1.4s ease}
 #garden.ready{opacity:1}
-#garden.raking{cursor:grabbing}
+#garden.raking,#garden.lifting{cursor:grabbing}
 .layer{position:absolute;left:0;top:0;display:block;pointer-events:none}
 /* soft architectural light: a broad wash from the upper left, a whisper of vignette */
 #wash{position:absolute;inset:0;pointer-events:none;background:linear-gradient(135deg,rgba(255,252,244,.22) 0%,rgba(255,252,244,0) 42%,rgba(92,80,60,.06) 100%),radial-gradient(ellipse at 50% 46%,rgba(0,0,0,0) 55%,rgba(70,60,44,.10) 100%)}
@@ -44,6 +44,7 @@ html,body{margin:0;height:100%;background:#e9e5dc;overflow:hidden;overscroll-beh
   <canvas id="gc" class="layer"></canvas>
   <canvas id="rc" class="layer"></canvas>
   <canvas id="lc" class="layer"></canvas>
+  <canvas id="ac" class="layer"></canvas>
   <canvas id="sc" class="layer"></canvas>
   <div id="wash"></div>
   <div id="grain"></div>
@@ -56,8 +57,8 @@ html,body{margin:0;height:100%;background:#e9e5dc;overflow:hidden;overscroll-beh
 <script>
 (function(){
 'use strict';
-var garden=document.getElementById('garden'),gc=document.getElementById('gc'),rc=document.getElementById('rc'),sc=document.getElementById('sc'),lc=document.getElementById('lc'),grainEl=document.getElementById('grain'),rk=document.getElementById('rk'),smBtn=document.getElementById('sm');
-var gx=gc.getContext('2d'),rx=rc.getContext('2d'),sx=sc.getContext('2d'),lx=lc.getContext('2d');
+var garden=document.getElementById('garden'),gc=document.getElementById('gc'),rc=document.getElementById('rc'),sc=document.getElementById('sc'),lc=document.getElementById('lc'),ac=document.getElementById('ac'),grainEl=document.getElementById('grain'),rk=document.getElementById('rk'),smBtn=document.getElementById('sm');
+var gx=gc.getContext('2d'),rx=rc.getContext('2d'),sx=sc.getContext('2d'),lx=lc.getContext('2d'),ax=ac.getContext('2d');
 var rkDots=rk.getElementsByTagName('i');
 var W=0,H=0,dpr=1,u=0,pitch=7,portrait=true,stones=[];
 var base=document.createElement('canvas'),bx=base.getContext('2d'); // pristine raked pattern, restored by "smooth"
@@ -139,7 +140,12 @@ function grooves(ctx,paths){
 }
 
 /* ---------- stones: irregular, faceted, mossy at the foot ---------- */
+var movedPos={p:{},l:{}}; // where the user has set each stone down (fractions of the screen), per orientation
 function layoutSpecs(){
+  var L=layoutSpecs0(),m=movedPos[portrait?'p':'l'];
+  L.forEach(function(sp){var o=m[sp.seed];if(o){sp.x=o.x;sp.y=o.y}});return L;
+}
+function layoutSpecs0(){
   return portrait?[
     {x:.385,y:.455,rx:.205,ry:.135,rot:-.42,n:11,seed:14,rings:6},
     {x:.755,y:.595,rx:.112,ry:.078,rot:.55,n:9,seed:41,rings:4},
@@ -164,18 +170,35 @@ function makeStone(sp){
     var ax=lerp(p1[0],p0[0],s),ay=lerp(p1[1],p0[1],s),bx_=lerp(p1[0],p2[0],s),by_=lerp(p1[1],p2[1],s);
     for(m=0;m<=5;m++){var t=m/5,u1=1-t;poly.push(u1*u1*ax+2*u1*t*p1[0]+t*t*bx_,u1*u1*ay+2*u1*t*p1[1]+t*t*by_)}
   }
-  return{cx:cx,cy:cy,v:v,poly:poly,sp:sp,r:r,ss:sp.rx*u/70};
+  return{cx:cx,cy:cy,v:v,poly:poly,sp:sp,r:r,ss:sp.rx*u/70,L:0,lv:0,anim:0,z:0,sprite:null};
 }
 function stoneColors(){return{dark:[16,17,15],mid:[42,43,39],light:[104,105,96]}}
-function drawStone(c,S){
-  var poly=S.poly,v=S.v,n=v.length,r=S.r,ss=S.ss,i,col=stoneColors(),LXn=-LX,LYn=-LY; // toward the light
-  // soft ground shadows (canvas shadows work on iOS)
+var LIFT_SCALE=.06;
+function drawShadow(c,S){ // soft ground shadows (canvas shadows work on iOS). A lifted stone throws a bigger, softer, fainter one.
+  var L=Math.max(-.3,S.L),ss=S.ss,sc=1+LIFT_SCALE*L;
   c.save();
-  c.shadowColor='rgba(46,38,26,.34)';c.shadowBlur=22*ss*dpr;c.shadowOffsetX=11*ss*dpr;c.shadowOffsetY=15*ss*dpr;
-  c.fillStyle='#222';pathPoly(c,poly);c.fill();
-  c.shadowColor='rgba(34,28,18,.55)';c.shadowBlur=4.5*ss*dpr;c.shadowOffsetX=2*ss*dpr;c.shadowOffsetY=3*ss*dpr;
+  c.translate(S.cx,S.cy);c.scale(sc,sc);c.translate(-S.cx,-S.cy);
+  c.shadowColor='rgba(46,38,26,'+(.34-.12*L).toFixed(3)+')';c.shadowBlur=22*ss*dpr*(1+1.1*L);c.shadowOffsetX=11*ss*dpr*(1+1.6*L);c.shadowOffsetY=15*ss*dpr*(1+1.6*L);
+  c.fillStyle='#222';pathPoly(c,S.poly);c.fill();
+  c.shadowColor='rgba(34,28,18,'+(.55-.35*L).toFixed(3)+')';c.shadowBlur=4.5*ss*dpr*(1+1.8*L);c.shadowOffsetX=2*ss*dpr*(1+2*L);c.shadowOffsetY=3*ss*dpr*(1+2*L);
   c.fill();
   c.restore();
+}
+function bakeSprite(S){ // the stone body is drawn once into its own canvas, so it can be picked up and moved
+  var bb=bounds(S.poly),pad=5,x0=Math.floor((bb[0]-pad)*dpr)/dpr,y0=Math.floor((bb[1]-pad)*dpr)/dpr,w=Math.ceil((bb[2]+pad-x0)*dpr)/dpr,h=Math.ceil((bb[3]+pad-y0)*dpr)/dpr;
+  var cv=document.createElement('canvas');cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);
+  var c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,-x0*dpr,-y0*dpr);
+  drawStone(c,S);
+  S.sprite=cv;S.sw=w;S.sh=h;S.ox0=x0-S.cx;S.oy0=y0-S.cy;
+}
+function paintStone(c,S){
+  var sc=1+LIFT_SCALE*Math.max(-.3,S.L);
+  c.save();c.translate(S.cx,S.cy);c.scale(sc,sc);c.translate(-S.cx,-S.cy);
+  c.drawImage(S.sprite,S.cx+S.ox0,S.cy+S.oy0,S.sw,S.sh);
+  c.restore();
+}
+function drawStone(c,S){
+  var poly=S.poly,v=S.v,n=v.length,r=S.r,ss=S.ss,i,col=stoneColors(),LXn=-LX,LYn=-LY; // toward the light
   c.save();pathPoly(c,poly);c.clip();
   // base
   var bb=bounds(poly),g=c.createLinearGradient(bb[0],bb[1],bb[2],bb[3]);
@@ -280,27 +303,29 @@ function ringsFor(S,idx){
     rings.push(pts);
   }
   // clip with other stones' territory (ripples meet where the stones' influences meet)
-  var paths=[],others=stones.filter(function(o,i){return i!==idx});
-  rings.forEach(function(pts){
+  var paths=[],pri=[],others=stones.filter(function(o,i){return i!==idx});
+  rings.forEach(function(pts,ringK){
     var ok=pts.map(function(p){var di=Math.abs(sdist(poly,p[0],p[1]));for(var o=0;o<others.length;o++){if(Math.abs(sdist(others[o].poly,p[0],p[1]))<di-.01)return false}return true});
     var n=pts.length,start=-1,i;
     for(i=0;i<n;i++)if(!ok[i]){start=i;break}
     var run=[];
-    if(start<0){var all=[];pts.forEach(function(p){all.push(p[0],p[1])});all.push(pts[0][0],pts[0][1]);all.push(pts[1][0],pts[1][1]);paths.push(all);return}
+    if(start<0){var all=[];pts.forEach(function(p){all.push(p[0],p[1])});all.push(pts[0][0],pts[0][1]);all.push(pts[1][0],pts[1][1]);paths.push(all);pri.push(ringK);return}
     for(var c=1;c<=n;c++){
       var ii=(start+c)%n;
       if(ok[ii])run.push(pts[ii][0],pts[ii][1]);
-      else{if(run.length>=6)paths.push(run);run=[]}
+      else{if(run.length>=6){paths.push(run);pri.push(ringK)}run=[]}
     }
-    if(run.length>=6)paths.push(run);
+    if(run.length>=6){paths.push(run);pri.push(ringK)}
   });
-  var outer=pitch*(1.35+S.sp.rings-1+.75),ring=[];
-  // erase region (the outermost ripple expanded)
-  var N2=100;for(j=0;j<N2;j++){var th3=j/N2*6.2832,dx3=Math.cos(th3),dy3=Math.sin(th3),lo3=0,hi3=maxR+outer+8;for(var it3=0;it3<20;it3++){var m3=(lo3+hi3)/2;if(sdist(poly,S.cx+dx3*m3,S.cy+dy3*m3)<outer)lo3=m3;else hi3=m3}ring.push(S.cx+dx3*lo3,S.cy+dy3*lo3)}
-  return{paths:paths,erase:ring};
+  return{paths:paths,ringOf:pri,erase:eraseRing(S)};
 }
-function buildPattern(){
-  var ctx=rx;ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
+function eraseRing(S,extra){ // erase region (the outermost ripple expanded)
+  var poly=S.poly,bb=bounds(poly),maxR=Math.hypot(bb[2]-bb[0],bb[3]-bb[1]),outer=pitch*(1.35+S.sp.rings-1+.75)+(extra||0),ring=[],j;
+  var N2=100;for(j=0;j<N2;j++){var th3=j/N2*6.2832,dx3=Math.cos(th3),dy3=Math.sin(th3),lo3=0,hi3=maxR+outer+8;for(var it3=0;it3<20;it3++){var m3=(lo3+hi3)/2;if(sdist(poly,S.cx+dx3*m3,S.cy+dy3*m3)<outer)lo3=m3;else hi3=m3}ring.push(S.cx+dx3*lo3,S.cy+dy3*lo3)}
+  return ring;
+}
+function renderPattern(ctx){ // the pristine pattern for the stones where they are now; returns each stone's ripple data
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);
   var lines=[],i,off=pitch*.5;
   if(portrait){for(i=-1;off+i*pitch<W+pitch;i++){var x=Math.round((off+i*pitch)*dpr)/dpr;lines.push([x,-6,x,H+6])}}
   else{for(i=-1;off+i*pitch<H+pitch;i++){var y=Math.round((off+i*pitch)*dpr)/dpr;lines.push([-6,y,W+6,y])}}
@@ -310,7 +335,12 @@ function buildPattern(){
   ringSets.forEach(function(rs){ctx.beginPath();ctx.moveTo(rs.erase[0],rs.erase[1]);for(var k=2;k<rs.erase.length;k+=2)ctx.lineTo(rs.erase[k],rs.erase[k+1]);ctx.closePath();ctx.fill()});
   ctx.restore();
   ringSets.forEach(function(rs){grooves(ctx,rs.paths)});
-  base.width=rc.width;base.height=rc.height;bx.setTransform(1,0,0,1,0,0);bx.clearRect(0,0,base.width,base.height);bx.drawImage(rc,0,0);
+  return ringSets;
+}
+function buildPattern(){
+  base.width=rc.width;base.height=rc.height;
+  renderPattern(bx);
+  rx.setTransform(1,0,0,1,0,0);rx.clearRect(0,0,rc.width,rc.height);rx.drawImage(base,0,0);
 }
 
 /* ---------- the rake ---------- */
@@ -381,9 +411,169 @@ function frame(t){
     dirtyRk=false;
   }
   if(sweepState)stepSweep(t);
+  stepStones(t);stepPat(t);
+  if(dirtyStones){renderStones();dirtyStones=false}
 }
 function pt(e){var r=garden.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
 var tapT=0,tapX=0,tapY=0,downT=0,downX=0,downY=0,moved=0;
+
+/* ---------- movable stones: press and hold (or drag) on a stone to lift it ---------- */
+var HOLD=300,DRAGSTART=8,EDGE=10,GAP=16,sd=null,dirtyStones=false,pat=null,lastFT=0;
+function translateStone(S,dx,dy){
+  var i;S.cx+=dx;S.cy+=dy;
+  for(i=0;i<S.poly.length;i+=2){S.poly[i]+=dx;S.poly[i+1]+=dy}
+  for(i=0;i<S.v.length;i++){S.v[i][0]+=dx;S.v[i][1]+=dy}
+}
+function stoneAt(x,y){
+  for(var i=stones.length-1;i>=0;i--){var nn=nearest(stones[i].poly,x,y);if(nn[3]||nn[2]<5)return stones[i]}
+  return null;
+}
+function clampEdge(S){
+  var bb=bounds(S.poly),dx=0,dy=0;
+  if(bb[0]<EDGE)dx=EDGE-bb[0];else if(bb[2]>W-EDGE)dx=W-EDGE-bb[2];
+  if(bb[1]<EDGE)dy=EDGE-bb[1];else if(bb[3]>H-EDGE)dy=H-EDGE-bb[3];
+  if(dx||dy)translateStone(S,dx,dy);
+}
+function polyGap(A,B){ // signed gap between two polygons, plus the unit direction that moves A away from B
+  var best=1e9,bdx=0,bdy=0,i,n,sg,l,pa=A.poly,pb=B.poly;
+  for(i=0;i<pa.length;i+=2){
+    n=nearest(pb,pa[i],pa[i+1]);sg=n[3]?-n[2]:n[2];
+    if(sg<best){best=sg;l=n[2];
+      if(l<1e-6){bdx=A.cx-B.cx;bdy=A.cy-B.cy;l=Math.hypot(bdx,bdy)||1;bdx/=l;bdy/=l}
+      else if(n[3]){bdx=(n[0]-pa[i])/l;bdy=(n[1]-pa[i+1])/l}else{bdx=(pa[i]-n[0])/l;bdy=(pa[i+1]-n[1])/l}}
+  }
+  for(i=0;i<pb.length;i+=2){
+    n=nearest(pa,pb[i],pb[i+1]);sg=n[3]?-n[2]:n[2];
+    if(sg<best){best=sg;l=n[2];
+      if(l<1e-6){bdx=A.cx-B.cx;bdy=A.cy-B.cy;l=Math.hypot(bdx,bdy)||1;bdx/=l;bdy/=l}
+      else if(n[3]){bdx=(pb[i]-n[0])/l;bdy=(pb[i+1]-n[1])/l}else{bdx=(n[0]-pb[i])/l;bdy=(n[1]-pb[i+1])/l}}
+  }
+  return{s:best,dx:bdx,dy:bdy};
+}
+function constrain(S){ // keep the stone on screen and clear of the others; slides along whatever it meets. false = could not be satisfied
+  for(var it=0;it<6;it++){
+    clampEdge(S);var any=false,ba=bounds(S.poly);
+    for(var j=0;j<stones.length;j++){
+      var o=stones[j];if(o===S)continue;
+      var bo=bounds(o.poly);
+      if(ba[0]>bo[2]+GAP||bo[0]>ba[2]+GAP||ba[1]>bo[3]+GAP||bo[1]>ba[3]+GAP)continue;
+      var g=polyGap(S,o);
+      if(g.s<GAP-.01){var m=GAP-g.s+.05;translateStone(S,g.dx*m,g.dy*m);ba=bounds(S.poly);any=true}
+    }
+    if(!any)break;
+  }
+  clampEdge(S);
+  var bb=bounds(S.poly);
+  if(bb[0]<EDGE-.5||bb[1]<EDGE-.5||bb[2]>W-EDGE+.5||bb[3]>H-EDGE+.5)return false;
+  for(var k=0;k<stones.length;k++){
+    var q=stones[k];if(q===S)continue;
+    var bq=bounds(q.poly);if(bb[0]>bq[2]+GAP||bq[0]>bb[2]+GAP||bb[1]>bq[3]+GAP||bq[1]>bb[3]+GAP)continue;
+    if(polyGap(S,q).s<GAP-.6)return false;
+  }
+  return true;
+}
+function liftStone(){
+  if(!sd||sd.lifted)return;
+  clearTimeout(sd.timer);sd.lifted=true;var S=sd.S;
+  sd.old={poly:S.poly.slice(),cx:S.cx,cy:S.cy,sp:S.sp};sd.good=[S.cx,S.cy];
+  S.z=1;S.anim=1;S.lv=0;dirtyStones=true;schedule();
+  garden.classList.add('lifting');
+  try{if(navigator.vibrate)navigator.vibrate(8)}catch(_){}
+}
+function dragStoneTo(x,y){
+  var S=sd.S,tx=x-sd.gx,ty=y-sd.gy,dx=tx-S.cx,dy=ty-S.cy,steps=Math.max(1,Math.ceil(Math.hypot(dx,dy)/6)),sx_=dx/steps,sy_=dy/steps;
+  for(var k=0;k<steps;k++){
+    translateStone(S,sx_,sy_);
+    if(constrain(S))sd.good=[S.cx,S.cy];
+    else{translateStone(S,sd.good[0]-S.cx,sd.good[1]-S.cy);break}
+  }
+  dirtyStones=true;schedule();
+}
+function dropStone(d){
+  var S=d.S,old=d.old;S.anim=2;S.lv=0;dirtyStones=true;
+  movedPos[portrait?'p':'l'][S.sp.seed]={x:S.cx/W,y:S.cy/H};
+  if(Math.hypot(S.cx-old.cx,S.cy-old.cy)>3)startRerake(S,stones.indexOf(S),old);
+  schedule();
+}
+function renderStones(){
+  sx.setTransform(dpr,0,0,dpr,0,0);sx.clearRect(0,0,W,H);
+  stones.slice().sort(function(a,b){return a.z-b.z}).forEach(function(S){drawShadow(sx,S);paintStone(sx,S)});
+}
+function stepStones(t){
+  var dt=Math.min(.033,Math.max(0,(t-lastFT)/1000)),any=false;lastFT=t;if(dt<=0)dt=.016;
+  for(var i=0;i<stones.length;i++){
+    var S=stones[i];
+    if(S.anim===1){S.L+=(1-S.L)*(1-Math.exp(-dt/.07));if(1-S.L<.004){S.L=1;S.anim=0}any=true}
+    else if(S.anim===2){ // set down: a tiny damped spring, a hair of overshoot
+      var h=dt/4;for(var k=0;k<4;k++){S.lv+=(-196*S.L-16.8*S.lv)*h;S.L+=S.lv*h}
+      if(Math.abs(S.L)<.003&&Math.abs(S.lv)<.05){S.L=0;S.lv=0;S.anim=0;S.z=0}any=true;
+    }
+  }
+  if(any){dirtyStones=true;schedule()}
+}
+
+/* ---------- re-rake: the old spot is raked straight again, fresh ripples draw themselves around the new one ---------- */
+function polyPath(c,p){c.beginPath();c.moveTo(p[0],p[1]);for(var i=2;i<p.length;i+=2)c.lineTo(p[i],p[i+1]);c.closePath()}
+function startRerake(S,idx,old){
+  finishPat();sweepState=null;flush();commit(false);
+  var ringSets=renderPattern(bx),oldE=eraseRing(old,pitch*3),newE=ringSets[idx].erase,polys=[oldE];
+  var bo=bounds(oldE),bn=bounds(newE);
+  stones.forEach(function(o,j){ // neighbours whose ripples used to meet the old stone (or now meet the new one) are redrawn too
+    if(j===idx)return;var e=ringSets[j].erase,be=bounds(e);
+    function hit(b){return!(be[0]>b[2]||b[0]>be[2]||be[1]>b[3]||b[1]>be[3])}
+    if(hit(bo)||hit(bn))polys.push(e);
+  });
+  // the gravel where the stone now sits is bare; its ripples will draw themselves
+  rx.save();rx.setTransform(dpr,0,0,dpr,0,0);rx.globalCompositeOperation='destination-out';rx.fillStyle='#000';polyPath(rx,newE);rx.fill();rx.restore();
+  var lo=1e9,hi=-1e9;
+  polys.forEach(function(p){var b=bounds(p),a=portrait?b[1]:b[0],z=portrait?b[3]:b[2];if(a<lo)lo=a;if(z>hi)hi=z});
+  var paths=ringSets[idx].paths.map(function(q,i){ // alternate rings are drawn in opposite directions
+    if(ringSets[idx].ringOf[i]%2===0)return q;var r=[];for(var k=q.length-2;k>=0;k-=2)r.push(q[k],q[k+1]);return r;
+  });
+  pat={polys:polys,newE:newE,lo:lo-2,hi:hi+2,prev:lo-2,t0:0,paths:paths,ringOf:ringSets[idx].ringOf,nR:S.sp.rings,wipeDone:false,dur:560,rd:90,rdur:520,rstart:90};
+  if(reduce)finishPat();else schedule();
+}
+function wipeBand(a,b){
+  var i,p,x0,y0,w,h;
+  if(portrait){x0=0;w=rc.width;y0=Math.max(0,Math.floor(a*dpr)-1);h=Math.min(rc.height,Math.ceil(b*dpr)+1)-y0}
+  else{y0=0;h=rc.height;x0=Math.max(0,Math.floor(a*dpr)-1);w=Math.min(rc.width,Math.ceil(b*dpr)+1)-x0}
+  if(w<=0||h<=0)return;
+  for(i=0;i<pat.polys.length;i++){
+    p=pat.polys[i];rx.save();rx.setTransform(dpr,0,0,dpr,0,0);polyPath(rx,p);rx.clip();
+    rx.setTransform(1,0,0,1,0,0);rx.beginPath();rx.rect(x0,y0,w,h);rx.clip();
+    rx.clearRect(x0,y0,w,h);rx.drawImage(base,x0,y0,w,h,x0,y0,w,h);rx.restore();
+  }
+  rx.save();rx.setTransform(dpr,0,0,dpr,0,0);rx.globalCompositeOperation='destination-out';rx.fillStyle='#000';polyPath(rx,pat.newE);rx.fill();rx.restore();
+}
+function ease01(x){x=clamp(x,0,1);return x*x*(3-2*x)}
+function drawRings(rt){
+  ax.setTransform(1,0,0,1,0,0);ax.clearRect(0,0,ac.width,ac.height);ax.setTransform(dpr,0,0,dpr,0,0);
+  var cut=[];
+  for(var i=0;i<pat.paths.length;i++){
+    var q=pat.paths[i],f=ease01((rt-pat.ringOf[i]*pat.rd/1000)/(pat.rdur/1000));if(f<=0)continue;
+    if(f>=1){cut.push(q);continue}
+    var np=q.length/2,fi=(np-1)*f,m=Math.floor(fi),fr=fi-m,o=q.slice(0,(m+1)*2);
+    if(m+1<np)o.push(lerp(q[m*2],q[m*2+2],fr),lerp(q[m*2+1],q[m*2+3],fr));
+    if(o.length>=4)cut.push(o);
+  }
+  grooves(ax,cut);
+}
+function stepPat(t){
+  if(!pat)return;if(!pat.t0)pat.t0=t;
+  var ms=t-pat.t0,k=clamp(ms/pat.dur,0,1),cur=pat.lo+(pat.hi-pat.lo)*ease01(k);
+  if(!pat.wipeDone){if(cur>pat.prev)wipeBand(pat.prev,cur);pat.prev=cur;if(k>=1)pat.wipeDone=true}
+  var rt=(ms-pat.rstart)/1000,rEnd=(pat.rstart+(pat.nR-1)*pat.rd+pat.rdur)/1000;
+  if(rt>0)drawRings(Math.min(rt,rEnd+1));
+  if(pat.wipeDone&&rt>=rEnd)finishPat();else schedule();
+}
+function finishPat(){
+  if(!pat)return;
+  if(!pat.wipeDone)wipeBand(pat.prev,pat.hi+2);
+  ax.setTransform(1,0,0,1,0,0);ax.clearRect(0,0,ac.width,ac.height);
+  rx.setTransform(dpr,0,0,dpr,0,0);grooves(rx,pat.paths);
+  pat=null;
+}
+
 garden.addEventListener('pointerdown',function(e){
   if(down)return;
   if(e.pointerType==='mouse'&&e.button!==0)return;
@@ -391,24 +581,40 @@ garden.addEventListener('pointerdown',function(e){
   down=true;pid=e.pointerId;try{garden.setPointerCapture(pid)}catch(_){}
   var p=pt(e);px=hx=p[0];py=hy=p[1];hasH=false;last=null;live=null;
   downT=performance.now();downX=p[0];downY=p[1];moved=0;
+  var S=stoneAt(p[0],p[1]);
+  if(S){sd={S:S,gx:p[0]-S.cx,gy:p[1]-S.cy,lifted:false,timer:setTimeout(liftStone,HOLD)};return} // on a stone: hold to lift, or drag it
   garden.classList.add('raking');
   rk.style.transform='translate('+hx+'px,'+hy+'px) rotate('+((hh+Math.PI/2)*57.2958)+'deg)';
 },{passive:false});
 garden.addEventListener('pointermove',function(e){
   if(!down||e.pointerId!==pid)return;
   e.preventDefault();
+  if(sd){
+    var p=pt(e);px=p[0];py=p[1];moved=Math.max(moved,Math.hypot(px-downX,py-downY));
+    if(!sd.lifted&&moved>DRAGSTART)liftStone();
+    if(sd.lifted)dragStoneTo(px,py);
+    return;
+  }
   var evs=e.getCoalescedEvents?e.getCoalescedEvents():null;if(!evs||!evs.length)evs=[e];
-  for(var i=0;i<evs.length;i++){var p=pt(evs[i]);px=p[0];py=p[1];pull()}
+  for(var i=0;i<evs.length;i++){var p2=pt(evs[i]);px=p2[0];py=p2[1];pull()}
   moved=Math.max(moved,Math.hypot(px-downX,py-downY));
 },{passive:false});
-function up(e){
-  if(!down||e.pointerId!==pid)return;
-  down=false;pid=null;garden.classList.remove('raking');rk.classList.remove('on');rkOn=false;
-  flush();commit(false);last=null;hasH=false;
+function tapCheck(e){
   if(e.type==='pointerup'&&moved<9&&performance.now()-downT<350){
     var now=performance.now();
     if(now-tapT<420&&Math.hypot(downX-tapX,downY-tapY)<44){tapT=0;smooth()}else{tapT=now;tapX=downX;tapY=downY}
   }
+}
+function up(e){
+  if(!down||e.pointerId!==pid)return;
+  if(sd){
+    var d=sd;sd=null;clearTimeout(d.timer);down=false;pid=null;garden.classList.remove('lifting');
+    if(d.lifted)dropStone(d);else tapCheck(e);
+    return;
+  }
+  down=false;pid=null;garden.classList.remove('raking');rk.classList.remove('on');rkOn=false;
+  flush();commit(false);last=null;hasH=false;
+  tapCheck(e);
 }
 garden.addEventListener('pointerup',up);
 garden.addEventListener('pointercancel',up);
@@ -419,8 +625,8 @@ smBtn.addEventListener('click',function(){smooth()});
 /* ---------- smooth: a five-tine sweep lays the straight lines back down ---------- */
 var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
 function smooth(){
-  if(sweepState)return;
-  flush();commit(down);
+  if(sweepState||sd)return;
+  finishPat();flush();commit(down);
   if(reduce){rx.setTransform(1,0,0,1,0,0);rx.clearRect(0,0,rc.width,rc.height);rx.drawImage(base,0,0);return}
   var bw=Math.round(pitch*5*dpr),ext=portrait?rc.height:rc.width,perp=portrait?rc.width:rc.height,nb=Math.ceil(perp/bw),lag=[],i,r=rng(5);
   var ph=r()*6,ph2=r()*6;
@@ -449,14 +655,14 @@ function init(){
   dpr=Math.min(2,window.devicePixelRatio||1);W=window.innerWidth;H=window.innerHeight;u=Math.min(W,H);portrait=H>=W;
   pitch=clamp(u/54,6.5,8.2);MARGIN=pitch*2+7;for(var di=0;di<rkDots.length;di++)rkDots[di].style.left=((di-2)*pitch-1.5)+'px';
   sweepState=null;quads.length=0;live=null;last=null;
-  [gc,rc,lc,sc].forEach(sizeCanvas);live=null;
+  [gc,rc,lc,ac,sc].forEach(sizeCanvas);if(sd){clearTimeout(sd.timer);sd=null;garden.classList.remove('lifting')}pat=null;live=null;
   var S=512,tile=gravelTile(S);
   gx.setTransform(1,0,0,1,0,0);gx.fillStyle=gx.createPattern(tile,'repeat');gx.fillRect(0,0,gc.width,gc.height);
   var gt=grainTile(256);grainEl.style.backgroundImage='url('+gt.toDataURL('image/png')+')';grainEl.style.backgroundSize=(256/dpr)+'px';
   stones=layoutSpecs().map(makeStone);
   buildPattern();
   sx.setTransform(dpr,0,0,dpr,0,0);sx.clearRect(0,0,W,H);
-  stones.forEach(function(s){drawStone(sx,s)});
+  stones.forEach(bakeSprite);renderStones();
   garden.classList.add('ready');
 }
 init();
@@ -469,7 +675,7 @@ window.addEventListener('resize',function(){
     lw=w;lh=h;init();
   },160);
 });
-window.__garden={stones:function(){return stones.map(function(s){return{cx:s.cx,cy:s.cy}})},pitch:function(){return pitch}};
+window.__garden={stones:function(){return stones.map(function(s){return{cx:s.cx,cy:s.cy,L:s.L,bb:bounds(s.poly)}})},gap:function(){var g=1e9;for(var i=0;i<stones.length;i++)for(var j=i+1;j<stones.length;j++)g=Math.min(g,polyGap(stones[i],stones[j]).s);return g},busy:function(){return!!pat||!!sd||stones.some(function(s){return s.anim})},W:function(){return W},H:function(){return H},pitch:function(){return pitch}};
 })();
 </script>
 </body></html>
