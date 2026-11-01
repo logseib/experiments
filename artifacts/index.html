@@ -160,10 +160,10 @@ layoutVerse();
 var T0=performance.now()/1000,PH=[Math.random()*6.28,Math.random()*6.28,Math.random()*6.28];
 function tiltAt(t){return 3*(0.5*Math.sin(6.2832*t/11+PH[0])+0.3*Math.sin(6.2832*t/17+PH[1])+0.2*Math.sin(6.2832*t/26+PH[2]))}
 var curTilt=0;
-// press squeeze: stone (only #tilt, never the verse) scales to 0.98 while pressed. Spring: quick critically-damped ease in (~140ms), slightly springy ease back out (~220ms)
-var PRESS_S=0.98,sc=1,scv=0,lastF=performance.now();
+// press squeeze: stone (only #tilt, never the verse) scales to 0.99 while pressed. Critically-damped spring, no overshoot: ease in settles ~400-450ms, ease back out ~500ms
+var PRESS_S=0.99,sc=1,scv=0,lastF=performance.now();
 function stepScale(dt){
-  var k=pressed?35:32,z=pressed?1:0.6,tgt=pressed?PRESS_S:1;
+  var k=pressed?12:10.5,z=1,tgt=pressed?PRESS_S:1; // critically damped (no overshoot)
   var n=Math.max(1,Math.ceil(dt/0.004)),h=dt/n;
   for(var i=0;i<n;i++){scv+=(k*k*(tgt-sc)-2*z*k*scv)*h;sc+=scv*h}
   if(!pressed&&Math.abs(sc-1)<0.00005&&Math.abs(scv)<0.0005){sc=1;scv=0}
