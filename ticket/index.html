@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#16171b">
+<meta name="color-scheme" content="dark">
+<title>Ticket</title>
+<meta name="description" content="Ticket, an experiment. Tug a ticket stub and it tilts a few degrees.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Ticket">
+<meta property="og:description" content="Ticket, an experiment. Tug a ticket stub and it tilts a few degrees.">
+<meta property="og:url" content="https://logseib.github.io/experiments/ticket/">
+<meta property="og:image" content="https://logseib.github.io/experiments/ticket/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Ticket">
+<meta name="twitter:description" content="Ticket, an experiment. Tug a ticket stub and it tilts a few degrees.">
+<meta name="twitter:image" content="https://logseib.github.io/experiments/ticket/og.jpg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+html,body{margin:0;height:100%;background:#16171b;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab;-webkit-tap-highlight-color:transparent;
+  background:radial-gradient(ellipse 80% 60% at 50% 46%,#2a2b31 0%,#1c1d22 55%,#121317 100%)}
+#stage.drag{cursor:grabbing}
+#persp{position:relative;width:var(--tw,min(300px,80vw));perspective:1200px;perspective-origin:50% 50%}
+#shadow,#ticket{display:block;width:100%;height:auto;transform-origin:50% 50%;will-change:transform;pointer-events:none}
+#shadow{position:absolute;left:0;top:0;filter:blur(18px);opacity:.6}
+#ticket{position:relative}
+#cap{position:fixed;left:0;right:0;top:calc(34px + env(safe-area-inset-top));text-align:center;font:400 9px/1 ui-monospace,'SF Mono',Menlo,Consolas,monospace;letter-spacing:.46em;text-indent:.46em;color:rgba(236,231,220,.38);pointer-events:none}
+</style></head><body>
+<div id="stage">
+  <div id="persp">
+    <svg id="shadow" viewBox="0 0 300 470" aria-hidden="true"><path d="M6,0H294Q300,0 300,6V340A10,10 0 0 0 300,360V464Q300,470 294,470H6Q0,470 0,464V360A10,10 0 0 0 0,340V6Q0,0 6,0Z" fill="#000"/></svg>
+    <svg id="ticket" viewBox="0 0 300 470" role="img" aria-label="Ticket stub">
+      <defs>
+        <clipPath id="shape"><path d="M6,0H294Q300,0 300,6V340A10,10 0 0 0 300,360V464Q300,470 294,470H6Q0,470 0,464V360A10,10 0 0 0 0,340V6Q0,0 6,0Z"/></clipPath>
+        <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0ebe0"/><stop offset="1" stop-color="#e6e0d3"/></linearGradient>
+        <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+          <stop offset=".5" stop-color="#fff" stop-opacity=".38"/>
+          <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g clip-path="url(#shape)">
+        <rect width="300" height="470" fill="url(#paper)"/>
+        <g fill="#1b1a18" font-family="ui-monospace,'SF Mono',Menlo,Consolas,monospace">
+          <text x="30" y="46" font-size="8.5" letter-spacing="3" opacity=".6">EXPERIMENT NO. 004</text>
+          <text x="270" y="46" font-size="8.5" letter-spacing="3" text-anchor="end" opacity=".6">ADMIT ONE</text>
+          <rect x="30" y="62" width="240" height="1" opacity=".18"/>
+          <text x="27" y="170" font-family="-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif" font-size="70" font-weight="300" letter-spacing="-3">Ticket</text>
+          <text x="30" y="200" font-size="9" letter-spacing="2.4" opacity=".55">A STAND-IN STUB</text>
+          <text x="30" y="282" font-size="8" letter-spacing="2.4" opacity=".5">DATE</text>
+          <text x="30" y="300" font-size="12" letter-spacing="1.5">31 OCT 2026</text>
+          <text x="172" y="282" font-size="8" letter-spacing="2.4" opacity=".5">GATE</text>
+          <text x="172" y="300" font-size="12" letter-spacing="1.5">04</text>
+          <text x="226" y="282" font-size="8" letter-spacing="2.4" opacity=".5">SEAT</text>
+          <text x="226" y="300" font-size="12" letter-spacing="1.5">12A</text>
+          <rect x="30" y="316" width="240" height="1" opacity=".18"/>
+          <text x="30" y="334" font-size="8" letter-spacing="2.4" opacity=".5">TEAR HERE</text>
+          <path d="M14 350H286" stroke="#1b1a18" stroke-opacity=".5" stroke-width="2" stroke-linecap="round" stroke-dasharray="0.1 6" fill="none"/>
+          <text x="30" y="378" font-size="8" letter-spacing="2.4" opacity=".5" display="none">STUB</text>
+          <g opacity=".85"><rect x="34" y="382" width="2" height="46"/><rect x="38" y="382" width="2" height="46"/><rect x="42" y="382" width="1" height="46"/><rect x="45" y="382" width="2" height="46"/><rect x="49" y="382" width="3" height="46"/><rect x="54" y="382" width="1" height="46"/><rect x="57" y="382" width="2" height="46"/><rect x="63" y="382" width="1" height="46"/><rect x="66" y="382" width="1" height="46"/><rect x="71" y="382" width="1" height="46"/><rect x="74" y="382" width="1" height="46"/><rect x="77" y="382" width="3" height="46"/><rect x="84" y="382" width="1" height="46"/><rect x="87" y="382" width="1" height="46"/><rect x="90" y="382" width="2" height="46"/><rect x="96" y="382" width="1" height="46"/><rect x="99" y="382" width="3" height="46"/><rect x="105" y="382" width="3" height="46"/><rect x="110" y="382" width="1" height="46"/><rect x="113" y="382" width="2" height="46"/><rect x="117" y="382" width="3" height="46"/><rect x="122" y="382" width="3" height="46"/><rect x="127" y="382" width="3" height="46"/><rect x="132" y="382" width="2" height="46"/><rect x="138" y="382" width="2" height="46"/><rect x="144" y="382" width="3" height="46"/><rect x="151" y="382" width="2" height="46"/><rect x="156" y="382" width="1" height="46"/><rect x="159" y="382" width="1" height="46"/><rect x="162" y="382" width="3" height="46"/><rect x="168" y="382" width="3" height="46"/><rect x="175" y="382" width="2" height="46"/><rect x="181" y="382" width="2" height="46"/><rect x="185" y="382" width="1" height="46"/></g>
+          <text x="270" y="396" font-size="8" letter-spacing="2.4" text-anchor="end" opacity=".5">SERIAL</text>
+          <text x="270" y="414" font-size="11" letter-spacing="1.6" text-anchor="end">0031</text>
+          <text x="270" y="428" font-size="11" letter-spacing="1.6" text-anchor="end">4821</text>
+          <text x="30" y="452" font-size="8" letter-spacing="2.6" opacity=".55">N° 0031 4821 7736</text>
+        </g>
+        <rect id="sheen" x="-160" y="-60" width="260" height="600" fill="url(#band)" transform="translate(0 0) skewX(-12)"/>
+        <path d="M6,0H294Q300,0 300,6V340A10,10 0 0 0 300,360V464Q300,470 294,470H6Q0,470 0,464V360A10,10 0 0 0 0,340V6Q0,0 6,0Z" fill="none" stroke="#000" stroke-opacity=".08"/>
+      </g>
+    </svg>
+  </div>
+</div>
+<div id="cap">DRAG</div>
+<script src="../menu.js"></script>
+<script>
+(function(){
+'use strict';
+var stage=document.getElementById('stage'),ticketEl=document.getElementById('ticket'),shadowEl=document.getElementById('shadow'),sheen=document.getElementById('sheen'),cap=document.getElementById('cap');
+var REST_X=4,REST_Y=-3;      // resting rotateX / rotateY (deg)
+var MAX=8,SOFT=110;          // clamp (deg) around rest, px of drag at which the curve starts to saturate
+var K_DRAG=420,C_DRAG=40;    // firm spring while a finger is down (follows the target)
+var K_REL=72,C_REL=9;     // soft spring on release: damping ratio ~0.53, slight overshoot
+var rx=REST_X,ry=REST_Y,vx=0,vy=0,tx=REST_X,ty=REST_Y,k=K_REL,c=C_REL;
+var dragging=false,pid=null,sx0=0,sy0=0,raf=0,last=0;
+
+function render(){
+  var dy=ry-REST_Y,dx=rx-REST_X;               // tilt relative to rest
+  var t='translate3d('+(-dy*2.4).toFixed(2)+'px,'+(16+dx*2.4).toFixed(2)+'px,-30px) rotateX('+rx.toFixed(3)+'deg) rotateY('+ry.toFixed(3)+'deg) scale(.97)';
+  shadowEl.style.transform=t;
+  ticketEl.style.transform='rotateX('+rx.toFixed(3)+'deg) rotateY('+ry.toFixed(3)+'deg)';
+  // sheen band slides across with the horizontal tilt, nudged by the vertical tilt
+  var sx=100+(dy/MAX)*120+(dx/MAX)*40, sy=(dx/MAX)*30;
+  sheen.setAttribute('transform','translate('+sx.toFixed(1)+' '+sy.toFixed(1)+') skewX(-12)');
+}
+function step(now){
+  var dt=Math.min(.032,(now-last)/1000||.016);last=now;
+  // semi-implicit Euler, 2 substeps for stability
+  for(var i=0;i<2;i++){
+    var h=dt/2;
+    vx+=(-k*(rx-tx)-c*vx)*h; rx+=vx*h;
+    vy+=(-k*(ry-ty)-c*vy)*h; ry+=vy*h;
+  }
+  render();
+  if(!dragging&&Math.abs(rx-tx)<.004&&Math.abs(ry-ty)<.004&&Math.abs(vx)<.01&&Math.abs(vy)<.01){
+    rx=tx;ry=ty;vx=vy=0;render();raf=0;return;
+  }
+  raf=requestAnimationFrame(step);
+}
+function kick(){ if(!raf){last=performance.now();raf=requestAnimationFrame(step);} }
+
+function setTarget(e){
+  var dx=e.clientX-sx0,dy=e.clientY-sy0;
+  // Push the side you touch away: drag right -> right edge recedes (+rotateY); drag down -> bottom edge recedes (-rotateX)
+  ty=REST_Y+MAX*Math.tanh(dx/SOFT);
+  tx=REST_X-MAX*Math.tanh(dy/SOFT);
+}
+stage.addEventListener('pointerdown',function(e){
+  if(dragging||(e.pointerType==='mouse'&&e.button!==0))return;
+  dragging=true;pid=e.pointerId;sx0=e.clientX;sy0=e.clientY;
+  try{stage.setPointerCapture(pid)}catch(_){}
+  stage.classList.add('drag');k=K_DRAG;c=C_DRAG;
+  cap.style.transition='opacity .6s';cap.style.opacity='0';
+  kick();
+});
+stage.addEventListener('pointermove',function(e){
+  if(!dragging||e.pointerId!==pid)return;
+  setTarget(e);kick();
+});
+function end(e){
+  if(!dragging||e.pointerId!==pid)return;
+  dragging=false;pid=null;stage.classList.remove('drag');
+  try{stage.releasePointerCapture(e.pointerId)}catch(_){}
+  tx=REST_X;ty=REST_Y;k=K_REL;c=C_REL;kick();
+}
+stage.addEventListener('pointerup',end);
+stage.addEventListener('pointercancel',end);
+stage.addEventListener('contextmenu',function(e){e.preventDefault()});
+// block page gestures (pinch / scroll)
+['touchmove','gesturestart'].forEach(function(n){document.addEventListener(n,function(e){e.preventDefault()},{passive:false})});
+
+window.__ticket={get:function(){return{rx:rx,ry:ry,tx:tx,ty:ty,rest:[REST_X,REST_Y],max:MAX}}};
+render();
+})();
+</script>
+</body></html>
