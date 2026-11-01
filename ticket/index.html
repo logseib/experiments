@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#16171b">
+<meta name="theme-color" content="#000">
 <meta name="color-scheme" content="dark">
 <title>Ticket</title>
 <meta name="description" content="Ticket, an experiment. Tug a ticket stub and it tilts a few degrees.">
@@ -21,9 +21,8 @@
 <meta name="twitter:image" content="https://logseib.github.io/experiments/ticket/og.jpg">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
-html,body{margin:0;height:100%;background:#16171b;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
-#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab;-webkit-tap-highlight-color:transparent;
-  background:radial-gradient(ellipse 80% 60% at 50% 46%,#2a2b31 0%,#1c1d22 55%,#121317 100%)}
+html,body{margin:0;height:100%;background:#000;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+#stage{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;touch-action:none;cursor:grab;-webkit-tap-highlight-color:transparent;background:#000}
 #stage.drag{cursor:grabbing}
 #persp{position:relative;width:var(--tw,min(300px,80vw));perspective:1200px;perspective-origin:50% 50%}
 #shadow,#ticket{display:block;width:100%;height:auto;transform-origin:50% 50%;will-change:transform;pointer-events:none}
@@ -81,7 +80,7 @@ html,body{margin:0;height:100%;background:#16171b;overflow:hidden;overscroll-beh
 'use strict';
 var stage=document.getElementById('stage'),ticketEl=document.getElementById('ticket'),shadowEl=document.getElementById('shadow'),sheen=document.getElementById('sheen'),cap=document.getElementById('cap');
 var REST_X=4,REST_Y=-3;      // resting rotateX / rotateY (deg)
-var MAX=8,SOFT=110;          // clamp (deg) around rest, px of drag at which the curve starts to saturate
+var MAX=16,SOFT=150;         // clamp (deg) around rest: ty=REST+MAX*tanh(drag/SOFT)
 var K_DRAG=420,C_DRAG=40;    // firm spring while a finger is down (follows the target)
 var K_REL=72,C_REL=9;     // soft spring on release: damping ratio ~0.53, slight overshoot
 var rx=REST_X,ry=REST_Y,vx=0,vy=0,tx=REST_X,ty=REST_Y,k=K_REL,c=C_REL;
@@ -89,11 +88,11 @@ var dragging=false,pid=null,sx0=0,sy0=0,raf=0,last=0;
 
 function render(){
   var dy=ry-REST_Y,dx=rx-REST_X;               // tilt relative to rest
-  var t='translate3d('+(-dy*2.4).toFixed(2)+'px,'+(16+dx*2.4).toFixed(2)+'px,-30px) rotateX('+rx.toFixed(3)+'deg) rotateY('+ry.toFixed(3)+'deg) scale(.97)';
+  var t='translate3d('+(-dy*1.5).toFixed(2)+'px,'+(16+dx*1.5).toFixed(2)+'px,-30px) rotateX('+rx.toFixed(3)+'deg) rotateY('+ry.toFixed(3)+'deg) scale(.97)';
   shadowEl.style.transform=t;
   ticketEl.style.transform='rotateX('+rx.toFixed(3)+'deg) rotateY('+ry.toFixed(3)+'deg)';
   // sheen band slides across with the horizontal tilt, nudged by the vertical tilt
-  var sx=100+(dy/MAX)*120+(dx/MAX)*40, sy=(dx/MAX)*30;
+  var sx=150+(dy/MAX)*120+(dx/MAX)*40, sy=(dx/MAX)*30;
   sheen.setAttribute('transform','translate('+sx.toFixed(1)+' '+sy.toFixed(1)+') skewX(-12)');
 }
 function step(now){
