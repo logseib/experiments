@@ -79,12 +79,13 @@ calcPX();window.addEventListener('resize',calcPX);
 function setPos(p){pos=p;render();updateVerse()}
 // --- horizontal drag spins the turntable (drag left = rotate forward)
 var id=null,lastX=0,samples=[],raf=0,vel=0;
+var pressed=false; // finger/mouse is down on the stone -> stone squeezes to PRESS_S (see tick)
 function stopInertia(){if(raf){cancelAnimationFrame(raf);raf=0}vel=0}
 board.addEventListener('pointerdown',function(e){
   if(id!==null)return;
   id=e.pointerId;lastX=e.clientX;samples=[{t:performance.now(),x:e.clientX}];stopInertia();
   try{board.setPointerCapture(id)}catch(_){}
-  board.classList.add('drag');e.preventDefault();
+  board.classList.add('drag');pressed=true;e.preventDefault();
 });
 board.addEventListener('pointermove',function(e){
   if(e.pointerId!==id)return;
@@ -94,7 +95,7 @@ board.addEventListener('pointermove',function(e){
 function up(e){
   if(e.pointerId!==id)return;id=null;
   try{board.releasePointerCapture(e.pointerId)}catch(_){}
-  board.classList.remove('drag');
+  board.classList.remove('drag');pressed=false;
   var s=samples,now=performance.now();
   if(s.length>1&&now-s[s.length-1].t<80){var dt=(s[s.length-1].t-s[0].t)/1000;if(dt>0)vel=-(s[s.length-1].x-s[0].x)/dt/PX} // frames per second
   else vel=0;
@@ -159,8 +160,16 @@ layoutVerse();
 var T0=performance.now()/1000,PH=[Math.random()*6.28,Math.random()*6.28,Math.random()*6.28];
 function tiltAt(t){return 3*(0.5*Math.sin(6.2832*t/11+PH[0])+0.3*Math.sin(6.2832*t/17+PH[1])+0.2*Math.sin(6.2832*t/26+PH[2]))}
 var curTilt=0;
-(function tick(){curTilt=tiltAt(performance.now()/1000-T0);tiltEl.style.transform='rotate('+curTilt.toFixed(3)+'deg)';requestAnimationFrame(tick)})();
-window.__tt={setPos:function(p){setPos(p)},verseTop:function(){return vY0-verseOffset((((-pos/N)%CYCLE)+CYCLE)%CYCLE)},get stageTop(){return H0()},get tilt(){return curTilt},get loadedCount(){return nLoaded},all:false,get frame(){return cur},get pos(){return pos},ready:false,N:N};
+// press squeeze: stone (only #tilt, never the verse) scales to 0.98 while pressed. Spring: quick critically-damped ease in (~140ms), slightly springy ease back out (~220ms)
+var PRESS_S=0.98,sc=1,scv=0,lastF=performance.now();
+function stepScale(dt){
+  var k=pressed?35:32,z=pressed?1:0.6,tgt=pressed?PRESS_S:1;
+  var n=Math.max(1,Math.ceil(dt/0.004)),h=dt/n;
+  for(var i=0;i<n;i++){scv+=(k*k*(tgt-sc)-2*z*k*scv)*h;sc+=scv*h}
+  if(!pressed&&Math.abs(sc-1)<0.00005&&Math.abs(scv)<0.0005){sc=1;scv=0}
+}
+(function tick(){var now=performance.now();stepScale(Math.min(0.05,(now-lastF)/1000));lastF=now;curTilt=tiltAt(now/1000-T0);tiltEl.style.transform='rotate('+curTilt.toFixed(3)+'deg) scale('+sc.toFixed(5)+')';requestAnimationFrame(tick)})();
+window.__tt={setPos:function(p){setPos(p)},verseTop:function(){return vY0-verseOffset((((-pos/N)%CYCLE)+CYCLE)%CYCLE)},get stageTop(){return H0()},get tilt(){return curTilt},get scale(){return sc},get loadedCount(){return nLoaded},all:false,get frame(){return cur},get pos(){return pos},ready:false,N:N};
 })();
 </script>
 <script src="../menu.js"></script></body></html>
