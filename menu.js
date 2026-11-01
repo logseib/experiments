@@ -4,7 +4,8 @@
     { name: 'Stickers', path: 'stickers/' },
     { name: 'Arrows', path: 'arrows/' },
     { name: 'Artifacts', path: 'artifacts/' },
-    { name: 'Garden', path: 'garden/' }
+    { name: 'Garden', path: 'garden/' },
+    { name: 'Ticket', path: 'ticket/' }
   ];
 
   var cs = document.currentScript;
